@@ -1,4 +1,8 @@
-
+#include <ros/ros.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <mavros_msgs/CommandBool.h>
+#include <mavros_msgs/SetMode.h>
+#include <mavros_msgs/State.h>
 
 
 class Drone{
@@ -24,6 +28,6 @@ class Drone{
 
     private:
         long double _posx, _posy, _posz; //These positions are likely to be changed by another data type
-        
+        ros::NodeHandle nh; //?
 
 };
