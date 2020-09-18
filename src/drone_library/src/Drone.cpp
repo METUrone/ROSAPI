@@ -1,4 +1,4 @@
-#include "Drone.hpp"
+#include <drone_library/Drone.hpp>
 
 //Take coordinates from GPS, and put them into our coordinates, x,y,z
 Drone::Drone(ros::NodeHandle nh){
@@ -79,6 +79,11 @@ bool Drone::is_armed(){
                 }
         }
     }
-    return false;//why ?
+    return false;//why that happened ?
+}
 
+void Drone::arm(){
+    while(!is_armed()){//I know this is bad, I will fix
+        ;
+    }
 }

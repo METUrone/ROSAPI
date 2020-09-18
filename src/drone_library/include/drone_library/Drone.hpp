@@ -8,7 +8,6 @@
 class Drone{
     public:
         Drone(ros::NodeHandle nh);
-        ~Drone();
         
         void move_relative(long double x, long double y, long double z, long double t);
 
