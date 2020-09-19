@@ -25,7 +25,7 @@ void Drone::move_relative(long double x, long double y, long double z, long doub
         arm();
     }
     */
-    arm();
+   arm();
 
     ROS_INFO("Starting to send.");
     ros::Publisher local_pos_pub = _nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local",10);
