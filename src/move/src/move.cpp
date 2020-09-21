@@ -3,24 +3,36 @@
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
-#include<msgs/move_relative_msg.h>//serverın gönderdiği mesaj
+#include <move/Pos.h>
+
+long double x = 0;
+long double y = 0;
+long double z = 0;
+long double t = 0;
+
+
+bool getService(
+    move::Pos::Request &req,
+    move::Pos::Response &res
+) {
+    ROS_WARN_STREAM("Move service is called");
+    x = req.x;
+    y = req.y;
+    z = req.z;
+    t = req.t;
+    return true;
+}
 
 mavros_msgs::State current_state;
 void state_cb(const mavros_msgs::State::ConstPtr& msg){
     current_state = *msg;
 }
-void move_info(const msgs::move_relative_msg& msg){
-	return;
-	}
-long double x = 0;
-long double y = 0;
-long double z = 0;
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "move_node");
     ros::NodeHandle nh;
-    ros::Subscriber info = nh.subscribe
-            ("move_relative_info", 10, &move_info);
+
     ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>
             ("mavros/state", 10, state_cb);
     ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>
@@ -29,6 +41,11 @@ int main(int argc, char **argv)
             ("mavros/cmd/arming");
     ros::ServiceClient set_mode_client = nh.serviceClient<mavros_msgs::SetMode>
             ("mavros/set_mode");
+    ros::ServiceServer server = nh.advertiseService(
+        "Pos",
+         &getService
+    );
+    //there should be a spinOnce, hope the other spinOnce's will be enough.
 
     //the setpoint publishing rate MUST be faster than 2Hz
     ros::Rate rate(20.0);
@@ -60,14 +77,15 @@ int main(int argc, char **argv)
     ros::Time last_request = ros::Time::now();
 
     while(ros::ok()){
-        if(x!= 0 || y!=0 || z!=0){
+        if(x!= 0 || y!=0 || z!=0 || t !=0){
+            ROS_INFO_STREAM("Request taken.");
             pose.pose.position.x += x;
             pose.pose.position.y += y;
             pose.pose.position.z += z;
             x = 0;
             y = 0;
             z = 0;
-            //service call changes x,y,z. After changing position commands, I put 0 again.
+            //function call changes x,y,z. After changing position commands, I put 0 again.
         }
         if( current_state.mode != "OFFBOARD" &&
             (ros::Time::now() - last_request > ros::Duration(5.0))){
