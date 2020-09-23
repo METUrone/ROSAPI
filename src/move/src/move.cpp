@@ -11,7 +11,7 @@ long double z = 2;
 long double t = 0;
 
 
-bool getService(
+bool getService_global(
     move::Pos::Request &req,
     move::Pos::Response &res
 ) {
@@ -53,9 +53,9 @@ int main(int argc, char **argv)
             ("mavros/cmd/arming");
     ros::ServiceClient set_mode_client = nh.serviceClient<mavros_msgs::SetMode>
             ("mavros/set_mode");
-    ros::ServiceServer server = nh.advertiseService(
-        "Pos",
-         &getService
+    ros::ServiceServer server_global_move = nh.advertiseService(
+        "Pos_global",
+         &getService_global
     );
     ros::ServiceServer server_relative_move = nh.advertiseService(
         "Pos_relative",
@@ -93,11 +93,9 @@ int main(int argc, char **argv)
     ros::Time last_request = ros::Time::now();
 
     while(ros::ok()){
-
-            
-            pose.pose.position.x = x;
-            pose.pose.position.y = y;
-            pose.pose.position.z = z;
+        pose.pose.position.x = x;
+        pose.pose.position.y = y;
+        pose.pose.position.z = z;
             
         if( current_state.mode != "OFFBOARD" &&
             (ros::Time::now() - last_request > ros::Duration(5.0))){
