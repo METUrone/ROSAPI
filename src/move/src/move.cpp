@@ -7,19 +7,31 @@
 
 long double x = 0;
 long double y = 0;
-long double z = 0;
+long double z = 2;
 long double t = 0;
 
 
-bool getService(
+bool getService_global(
     move::Pos::Request &req,
     move::Pos::Response &res
 ) {
+
     ROS_WARN_STREAM("Move service is called");
     x = req.x;
     y = req.y;
     z = req.z;
     t = req.t;
+    return true;
+}
+bool getService_relative(
+    move::Pos::Request &req,
+    move::Pos::Response &res
+) {
+    ROS_WARN_STREAM("Move service is called");
+    x += req.x;
+    y += req.y;
+    z += req.z;
+    t = t;
     return true;
 }
 
@@ -41,9 +53,13 @@ int main(int argc, char **argv)
             ("mavros/cmd/arming");
     ros::ServiceClient set_mode_client = nh.serviceClient<mavros_msgs::SetMode>
             ("mavros/set_mode");
-    ros::ServiceServer server = nh.advertiseService(
-        "Pos",
-         &getService
+    ros::ServiceServer server_global_move = nh.advertiseService(
+        "Pos_global",
+         &getService_global
+    );
+    ros::ServiceServer server_relative_move = nh.advertiseService(
+        "Pos_relative",
+         &getService_relative
     );
     //there should be a spinOnce, hope the other spinOnce's will be enough.
 
@@ -57,9 +73,9 @@ int main(int argc, char **argv)
     }
 
     geometry_msgs::PoseStamped pose;
-    pose.pose.position.x = 0;
-    pose.pose.position.y = 0;
-    pose.pose.position.z = 2;
+    pose.pose.position.x = x;
+    pose.pose.position.y = y;
+    pose.pose.position.z = z;
 
     //send a few setpoints before starting
     for(int i = 100; ros::ok() && i > 0; --i){
@@ -77,16 +93,10 @@ int main(int argc, char **argv)
     ros::Time last_request = ros::Time::now();
 
     while(ros::ok()){
-        if(x!= 0 || y!=0 || z!=0 || t !=0){
-            ROS_INFO_STREAM("Request taken.");
-            pose.pose.position.x += x;
-            pose.pose.position.y += y;
-            pose.pose.position.z += z;
-            x = 0;
-            y = 0;
-            z = 0;
-            //function call changes x,y,z. After changing position commands, I put 0 again.
-        }
+        pose.pose.position.x = x;
+        pose.pose.position.y = y;
+        pose.pose.position.z = z;
+            
         if( current_state.mode != "OFFBOARD" &&
             (ros::Time::now() - last_request > ros::Duration(5.0))){
             if( set_mode_client.call(offb_set_mode) &&

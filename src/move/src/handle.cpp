@@ -4,7 +4,7 @@
 void move_relative(long double _x, long double _y, long double _z, long double _t,ros::NodeHandle nh){
     move::Pos::Response res;
     move::Pos::Request req;
-    ros::ServiceClient client = nh.serviceClient<move::Pos>("Pos");
+    ros::ServiceClient client = nh.serviceClient<move::Pos>("Pos_global");
     req.x = _x;
     req.y = _y;
     req.z = _z;
