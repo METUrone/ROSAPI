@@ -31,7 +31,7 @@ bool getService_relative(
     x += req.x;
     y += req.y;
     z += req.z;
-    t = t;
+    t += req.t;
     return true;
 }
 
