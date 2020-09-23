@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS roscpp geometry_msgs mavros_msgs message
 add_service_files(
     FILES
     Pos.srv
+    Rot.srv
 )
 
 generate_messages()

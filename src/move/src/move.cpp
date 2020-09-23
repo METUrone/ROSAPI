@@ -4,12 +4,17 @@
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
 #include <move/Pos.h>
+#include <move/Rot.h>
+#include<cmath>
 
 long double x = 0;
 long double y = 0;
 long double z = 2;
 long double t = 0;
-
+long double x_o = 0;
+long double y_o = 0;
+long double z_o = 0;
+long double w_o = 0;
 
 bool getService_global(
     move::Pos::Request &req,
@@ -21,6 +26,22 @@ bool getService_global(
     y = req.y;
     z = req.z;
     t = req.t;
+    return true;
+}
+bool getService_rotate(
+    move::Rot::Request &req,
+    move::Rot::Response &res
+) {
+    //angular
+	float x_local=0;
+	float y_local=(3.141593/180)*req.y/2;
+	float z_local=0;
+
+    ROS_WARN_STREAM("Move service is called");
+    x_o = sin(x_local)*cos(y_local)*cos(z_local)+cos(x_local)*sin(y_local)*sin(z_local);
+    y_o = sin(x_local)*sin(y_local)*cos(z_local)+cos(x_local)*cos(y_local)*sin(z_local);
+    z_o = cos(x_local)*sin(y_local)*cos(z_local)-sin(x_local)*cos(y_local)*sin(z_local);
+    w_o = cos(x_local)*cos(y_local)*cos(z_local)-sin(x_local)*sin(y_local)*sin(z_local);
     return true;
 }
 bool getService_relative(
@@ -56,6 +77,10 @@ int main(int argc, char **argv)
     ros::ServiceServer server_global_move = nh.advertiseService(
         "Pos_global",
          &getService_global
+    );
+    ros::ServiceServer server_global_rotate = nh.advertiseService(
+        "Pos_rotate",
+         &getService_rotate
     );
     ros::ServiceServer server_relative_move = nh.advertiseService(
         "Pos_relative",
@@ -96,6 +121,10 @@ int main(int argc, char **argv)
         pose.pose.position.x = x;
         pose.pose.position.y = y;
         pose.pose.position.z = z;
+		pose.pose.orientation.x = x_o;
+        pose.pose.orientation.y = y_o;
+        pose.pose.orientation.z = z_o;
+        pose.pose.orientation.w = w_o;
             
         if( current_state.mode != "OFFBOARD" &&
             (ros::Time::now() - last_request > ros::Duration(5.0))){
