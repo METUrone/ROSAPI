@@ -1,11 +1,14 @@
+#include<cmath>
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
+#include <sensor_msgs/BatteryState.h>
+
 #include <move/Pos.h>
+#include <move/Battery.h>
 #include <move/Rot.h>
-#include<cmath>
 
 long double x = 0;
 long double y = 0;
@@ -56,13 +59,27 @@ bool getService_relative(
     return true;
 }
 
+sensor_msgs::BatteryState battery;
+bool getService_battery(
+    move::Battery::Request &req,
+    move::Battery::Response &res
+) {
+    ROS_WARN_STREAM("Battery service is called");
+    res.voltage = battery.voltage;
+    res.current = battery.current;
+    res.remaining = battery.percentage;
+    return true;
+}
+
 mavros_msgs::State current_state;
 void state_cb(const mavros_msgs::State::ConstPtr& msg){
     current_state = *msg;
 }
-
-int main(int argc, char **argv)
-{
+void battery_st(const sensor_msgs::BatteryState::ConstPtr& _battery){
+    battery = *_battery;
+}
+int main(int argc, char **argv){
+    
     ros::init(argc, argv, "move_node");
     ros::NodeHandle nh;
 
@@ -70,10 +87,16 @@ int main(int argc, char **argv)
             ("mavros/state", 10, state_cb);
     ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>
             ("mavros/setpoint_position/local", 10);
+    ros::Subscriber battery_status = nh.subscribe<sensor_msgs::BatteryState>
+            ("mavros/battery",10, battery_st);
     ros::ServiceClient arming_client = nh.serviceClient<mavros_msgs::CommandBool>
             ("mavros/cmd/arming");
     ros::ServiceClient set_mode_client = nh.serviceClient<mavros_msgs::SetMode>
             ("mavros/set_mode");
+    ros::ServiceServer server_battery = nh.advertiseService(
+        "Battery_status",
+        &getService_battery
+    );
     ros::ServiceServer server_global_move = nh.advertiseService(
         "Pos_global",
          &getService_global
