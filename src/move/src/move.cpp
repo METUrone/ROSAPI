@@ -1,6 +1,7 @@
 #include<cmath>
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
+#include<geometry_msgs/Twist.h>
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
@@ -9,6 +10,8 @@
 #include <move/Pos.h>
 #include <move/Battery.h>
 #include <move/Rot.h>
+#include<move/vel.h>
+#include<cmath>
 
 long double x = 0;
 long double y = 0;
@@ -18,6 +21,33 @@ long double x_o = 0;
 long double y_o = 0;
 long double z_o = 0;
 long double w_o = 0;
+
+
+
+bool getService_vel(
+    move::vel::Request &req,
+    move::vel::Response &res
+) {
+	ros::NodeHandle nh;
+	ros::Publisher vel_pub = nh.advertise<geometry_msgs::Twist>
+            ("mavros/setpoint_velocity/cmd_vel_unstamped", 10);
+	geometry_msgs::Twist vel;
+    ROS_WARN_STREAM("Vel service is called");
+    vel.linear.x = req.x_lin;
+	vel.linear.y = req.y_lin;
+	vel.linear.z = req.z_lin;
+	vel.angular.x = req.x_ang;
+	vel.angular.y = req.y_ang;
+	vel.angular.z = req.z_ang;
+	float vel_time=req.t;
+	ros::Time vel_request = ros::Time::now();
+	while(ros::Time::now()-vel_request<ros::Duration(vel_time)){
+		vel_pub.publish(vel);}
+
+
+
+    return true;
+}
 
 bool getService_global(
     move::Pos::Request &req,
@@ -75,6 +105,10 @@ mavros_msgs::State current_state;
 void state_cb(const mavros_msgs::State::ConstPtr& msg){
     current_state = *msg;
 }
+
+
+int main(int argc, char **argv)
+{
 void battery_st(const sensor_msgs::BatteryState::ConstPtr& _battery){
     battery = *_battery;
 }
@@ -89,10 +123,12 @@ int main(int argc, char **argv){
             ("mavros/setpoint_position/local", 10);
     ros::Subscriber battery_status = nh.subscribe<sensor_msgs::BatteryState>
             ("mavros/battery",10, battery_st);
+  
     ros::ServiceClient arming_client = nh.serviceClient<mavros_msgs::CommandBool>
             ("mavros/cmd/arming");
     ros::ServiceClient set_mode_client = nh.serviceClient<mavros_msgs::SetMode>
             ("mavros/set_mode");
+  
     ros::ServiceServer server_battery = nh.advertiseService(
         "Battery_status",
         &getService_battery
@@ -109,6 +145,10 @@ int main(int argc, char **argv){
         "Pos_relative",
          &getService_relative
     );
+	ros::ServiceServer server_vel = nh.advertiseService(
+        "Vel",
+         &getService_vel
+    );
     //there should be a spinOnce, hope the other spinOnce's will be enough.
 
     //the setpoint publishing rate MUST be faster than 2Hz
@@ -121,9 +161,8 @@ int main(int argc, char **argv){
     }
 
     geometry_msgs::PoseStamped pose;
-    pose.pose.position.x = x;
-    pose.pose.position.y = y;
-    pose.pose.position.z = z;
+    
+
 
     //send a few setpoints before starting
     for(int i = 100; ros::ok() && i > 0; --i){
@@ -139,7 +178,6 @@ int main(int argc, char **argv){
     arm_cmd.request.value = true;
 
     ros::Time last_request = ros::Time::now();
-
     while(ros::ok()){
         pose.pose.position.x = x;
         pose.pose.position.y = y;
@@ -148,6 +186,7 @@ int main(int argc, char **argv){
         pose.pose.orientation.y = y_o;
         pose.pose.orientation.z = z_o;
         pose.pose.orientation.w = w_o;
+
             
         if( current_state.mode != "OFFBOARD" &&
             (ros::Time::now() - last_request > ros::Duration(5.0))){
