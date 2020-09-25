@@ -8,6 +8,7 @@ add_service_files(
     FILES
     Pos.srv
     Rot.srv
+    vel.srv
 )
 
 generate_messages()
