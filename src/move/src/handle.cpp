@@ -1,6 +1,27 @@
 #include <ros/ros.h>
 #include <move/Pos.h>
 #include <move/Battery.h>
+#include <move/vel.h>
+
+void velocity(long double _x, long double _y, long double _z, long double __x, long double __y, long double __z, long double _t, ros::NodeHandle nh){
+    move::vel::Response res;
+    move::vel::Request req;
+    ros::ServiceClient client = nh.serviceClient<move::vel>("Vel");
+    req.x_lin = _x;
+    req.y_lin = _y;
+    req.z_lin = _z;
+    req.x_ang = __x;
+    req.y_ang = __y;
+    req.z_ang = __z;
+    req.t = _t;
+    bool succ = client.call(req,res);
+    if(succ){
+        ROS_INFO_STREAM("Successfull");
+    }
+    else{
+        ROS_INFO_STREAM("Unsuccessfull");
+    }
+}
 
 void move_global(long double _x, long double _y, long double _z, long double _t, ros::NodeHandle nh){
     move::Pos::Response res;
