@@ -107,8 +107,7 @@ void state_cb(const mavros_msgs::State::ConstPtr& msg){
 }
 
 
-int main(int argc, char **argv)
-{
+
 void battery_st(const sensor_msgs::BatteryState::ConstPtr& _battery){
     battery = *_battery;
 }
