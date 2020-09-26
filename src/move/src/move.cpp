@@ -1,7 +1,7 @@
-#include<cmath>
+#include <cmath>
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
-#include<geometry_msgs/Twist.h>
+#include <geometry_msgs/Twist.h>
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
@@ -10,9 +10,9 @@
 #include <move/Pos.h>
 #include <move/Battery.h>
 #include <move/Rot.h>
-#include<move/vel.h>
-#include<cmath>
-#include<move/circle.h>
+#include <move/vel.h>
+#include <move/circle.h>
+#include <move/Position.h>
 
 long double x = 0;
 long double y = 0;
@@ -46,8 +46,8 @@ bool circle(
 	while(ros::Time::now()-vel_request<ros::Duration(vel_time)){
 		angle+=speed*0.01;
 		pose.pose.position.x = x+sin(angle)*radius;
-        	pose.pose.position.y = y+cos(angle)*radius;
-        	pose.pose.position.z = z;
+        pose.pose.position.y = y+cos(angle)*radius;
+        pose.pose.position.z = z;
 		circle_pub.publish(pose);
 		ros::spinOnce();}
 
@@ -55,6 +55,19 @@ bool circle(
 
     return true;
 }
+
+geometry_msgs::PoseStamped real_position;
+bool getService_pos(
+    move::Position::Request &req,
+    move::Position::Response &res
+) {
+    res.x = real_position.pose.position.x;
+    res.y = real_position.pose.position.y;
+    res.z = real_position.pose.position.z;
+    
+    return true;
+}
+
 bool getService_vel(
     move::vel::Request &req,
     move::vel::Response &res
@@ -92,6 +105,7 @@ bool getService_global(
     t = req.t;
     return true;
 }
+
 bool getService_rotate(
     move::Rot::Request &req,
     move::Rot::Response &res
@@ -108,6 +122,7 @@ bool getService_rotate(
     w_o = cos(x_local)*cos(y_local)*cos(z_local)-sin(x_local)*sin(y_local)*sin(z_local);
     return true;
 }
+
 bool getService_relative(
     move::Pos::Request &req,
     move::Pos::Response &res
@@ -137,11 +152,14 @@ void state_cb(const mavros_msgs::State::ConstPtr& msg){
     current_state = *msg;
 }
 
-
-
 void battery_st(const sensor_msgs::BatteryState::ConstPtr& _battery){
     battery = *_battery;
 }
+
+void position_func(const geometry_msgs::PoseStamped::ConstPtr& _pose){
+    real_position = *_pose;
+}
+
 int main(int argc, char **argv){
     
     ros::init(argc, argv, "move_node");
@@ -153,6 +171,8 @@ int main(int argc, char **argv){
             ("mavros/setpoint_position/local", 10);
     ros::Subscriber battery_status = nh.subscribe<sensor_msgs::BatteryState>
             ("mavros/battery",10, battery_st);
+    ros::Subscriber position = nh.subscribe<geometry_msgs::PoseStamped>
+            ("mavros/local_position/pose",10, position_func);
   
     ros::ServiceClient arming_client = nh.serviceClient<mavros_msgs::CommandBool>
             ("mavros/cmd/arming");
@@ -167,11 +187,10 @@ int main(int argc, char **argv){
         "Pos_global",
          &getService_global
     );
-ros::ServiceServer server_circle = nh.advertiseService(
-	"circle",
-	 &circle
-    );
-
+    ros::ServiceServer server_circle = nh.advertiseService(
+        "circle",
+        &circle
+        );
     ros::ServiceServer server_global_rotate = nh.advertiseService(
         "Pos_rotate",
          &getService_rotate
@@ -183,6 +202,10 @@ ros::ServiceServer server_circle = nh.advertiseService(
 	ros::ServiceServer server_vel = nh.advertiseService(
         "Vel",
          &getService_vel
+    );
+    ros::ServiceServer server_position = nh.advertiseService(
+        "Position",
+        &getService_pos
     );
     //there should be a spinOnce, hope the other spinOnce's will be enough.
 
@@ -243,7 +266,7 @@ ros::ServiceServer server_circle = nh.advertiseService(
         //Here we are constantly publishing the position.
         //If there is a service call or published position, add positions to pose.pose.position.xyz, it will do.
         local_pos_pub.publish(pose);
-
+        //std::cout << real_position.pose.position.x << " " << real_position.pose.position.y << " " << real_position.pose.position.z << std::endl;
         ros::spinOnce();
         rate.sleep();
     }
