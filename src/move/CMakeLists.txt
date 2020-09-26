@@ -10,6 +10,7 @@ add_service_files(
     Battery.srv
     Rot.srv
     vel.srv
+    circle.srv
 )
 
 generate_messages()
