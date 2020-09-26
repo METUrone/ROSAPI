@@ -12,6 +12,7 @@
 #include <move/Rot.h>
 #include<move/vel.h>
 #include<cmath>
+#include<move/circle.h>
 
 long double x = 0;
 long double y = 0;
@@ -23,7 +24,37 @@ long double z_o = 0;
 long double w_o = 0;
 
 
+bool circle(
+    move::circle::Request &req,
+    move::circle::Response &res
+) {
+	ros::NodeHandle nh;
+	ros::Publisher circle_pub = nh.advertise<geometry_msgs::PoseStamped>
+            ("mavros/setpoint_position/local", 10);
+	geometry_msgs::PoseStamped pose;
 
+
+	
+	
+	float vel_time=req.t;
+	float angle=0;
+	float radius=req.radius;
+	float speed=req.speed;
+
+	ros::Time vel_request = ros::Time::now();
+	ros::Rate rate(100.0);
+	while(ros::Time::now()-vel_request<ros::Duration(vel_time)){
+		angle+=speed*0.01;
+		pose.pose.position.x = x+sin(angle)*radius;
+        	pose.pose.position.y = y+cos(angle)*radius;
+        	pose.pose.position.z = z;
+		circle_pub.publish(pose);
+		ros::spinOnce();}
+
+
+
+    return true;
+}
 bool getService_vel(
     move::vel::Request &req,
     move::vel::Response &res
@@ -137,6 +168,11 @@ int main(int argc, char **argv){
         "Pos_global",
          &getService_global
     );
+ros::ServiceServer server_circle = nh.advertiseService(
+	"circle",
+	 &circle
+    );
+
     ros::ServiceServer server_global_rotate = nh.advertiseService(
         "Pos_rotate",
          &getService_rotate
