@@ -11,6 +11,8 @@ add_service_files(
     Rot.srv
     vel.srv
     circle.srv
+    Position.srv
+    Empty.srv
 )
 
 generate_messages()
