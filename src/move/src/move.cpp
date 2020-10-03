@@ -6,6 +6,8 @@
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
 #include <sensor_msgs/BatteryState.h>
+#include <sensor_msgs/Image.h>
+#include<vector>
 
 #include <move/Pos.h>
 #include <move/Battery.h>
@@ -13,6 +15,11 @@
 #include <move/vel.h>
 #include <move/circle.h>
 #include <move/Position.h>
+#include <move/Empty.h>
+#include <move/camera_info.h>
+
+using namespace std;
+
 
 long double x = 0;
 long double y = 0;
@@ -22,7 +29,16 @@ long double x_o = 0;
 long double y_o = 0;
 long double z_o = 0;
 long double w_o = 0;
+unsigned int _height;       
+unsigned int _width;
+unsigned int _step;  
+unsigned int _is_bigendian ;  
+vector<uint8_t> _data;
+vector<string> _info;
+bool camera_connected=false;
 
+
+bool main_loop=true;
 
 bool circle(
     move::circle::Request &req,
@@ -35,7 +51,7 @@ bool circle(
 
 
 	
-	
+	main_loop=false;
 	float vel_time=req.t;
 	float angle=0;
 	float radius=req.radius;
@@ -43,18 +59,31 @@ bool circle(
 
 	ros::Time vel_request = ros::Time::now();
 	ros::Rate rate(100.0);
-	while(ros::Time::now()-vel_request<ros::Duration(vel_time)){
+	while(ros::Time::now()-vel_request<ros::Duration(vel_time)&&!main_loop){
 		angle+=speed*0.01;
 		pose.pose.position.x = x+sin(angle)*radius;
-        pose.pose.position.y = y+cos(angle)*radius;
-        pose.pose.position.z = z;
+		pose.pose.position.y = y+cos(angle)*radius;
+		pose.pose.position.z = z;
 		circle_pub.publish(pose);
 		ros::spinOnce();}
 
+    
+	main_loop=true;
+    	return true;
+}
 
-
+geometry_msgs::PoseStamped real_position;
+bool getService_pos(
+    move::Position::Request &req,
+    move::Position::Response &res
+) {
+    res.x = real_position.pose.position.x;
+    res.y = real_position.pose.position.y;
+    res.z = real_position.pose.position.z;
+    
     return true;
 }
+
 
 geometry_msgs::PoseStamped real_position;
 bool getService_pos(
@@ -72,6 +101,7 @@ bool getService_vel(
     move::vel::Request &req,
     move::vel::Response &res
 ) {
+	main_loop=false;
 	ros::NodeHandle nh;
 	ros::Publisher vel_pub = nh.advertise<geometry_msgs::Twist>
             ("mavros/setpoint_velocity/cmd_vel_unstamped", 10);
@@ -85,14 +115,22 @@ bool getService_vel(
 	vel.angular.z = req.z_ang;
 	float vel_time=req.t;
 	ros::Time vel_request = ros::Time::now();
-	while(ros::Time::now()-vel_request<ros::Duration(vel_time)){
+	while(ros::Time::now()-vel_request<ros::Duration(vel_time)&&!main_loop){
 		vel_pub.publish(vel);}
 
+	main_loop=true;
+        return true;
+}
+bool set_main_loop(
+    move::Empty::Request &req,
+    move::Empty::Response &res
+) {
 
+
+    main_loop=true;
 
     return true;
 }
-
 bool getService_global(
     move::Pos::Request &req,
     move::Pos::Response &res
@@ -147,6 +185,26 @@ bool getService_battery(
     return true;
 }
 
+bool getService_camera(
+    move::camera_info::Request &req,
+    move::camera_info::Response &res
+) {
+	if(!camera_connected){
+		ROS_ERROR_STREAM("You are using drone without a camera .Please use correct drone(3dr iris with fpv camera");}
+	else{
+	res.height=_height;
+	res.width=_width;
+	res.step=_step;
+	res.is_bigendian=_is_bigendian ;
+    res.data=_data;
+	ROS_INFO_STREAM("data size = step*rows");
+	ROS_INFO_STREAM("encoding RGB8");}
+	
+	
+	
+	
+}
+
 mavros_msgs::State current_state;
 void state_cb(const mavros_msgs::State::ConstPtr& msg){
     current_state = *msg;
@@ -154,6 +212,19 @@ void state_cb(const mavros_msgs::State::ConstPtr& msg){
 
 void battery_st(const sensor_msgs::BatteryState::ConstPtr& _battery){
     battery = *_battery;
+}
+
+
+void camera_msg(const sensor_msgs::Image &_image){
+	 camera_connected=true;
+    _height=_image.height;
+	_width=_image.width;
+	_step=_image.step;   
+	_is_bigendian=_image.is_bigendian ;
+	_data=_image.data;
+
+
+
 }
 
 void position_func(const geometry_msgs::PoseStamped::ConstPtr& _pose){
@@ -167,6 +238,8 @@ int main(int argc, char **argv){
 
     ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>
             ("mavros/state", 10, state_cb);
+	ros::Subscriber camera_sub = nh.subscribe
+            ("/iris_fpv_cam/usb_cam/image_raw", 10, camera_msg);
     ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>
             ("mavros/setpoint_position/local", 10);
     ros::Subscriber battery_status = nh.subscribe<sensor_msgs::BatteryState>
@@ -182,6 +255,10 @@ int main(int argc, char **argv){
     ros::ServiceServer server_battery = nh.advertiseService(
         "Battery_status",
         &getService_battery
+    );
+    ros::ServiceServer server_camera = nh.advertiseService(
+        "Camera_info",
+        &getService_camera
     );
     ros::ServiceServer server_global_move = nh.advertiseService(
         "Pos_global",
@@ -207,6 +284,10 @@ int main(int argc, char **argv){
         "Position",
         &getService_pos
     );
+    ros::ServiceServer server_set_main_loop = nh.advertiseService(
+        "exit_call",
+        &set_main_loop
+        );
     //there should be a spinOnce, hope the other spinOnce's will be enough.
 
     //the setpoint publishing rate MUST be faster than 2Hz
@@ -265,7 +346,10 @@ int main(int argc, char **argv){
         }
         //Here we are constantly publishing the position.
         //If there is a service call or published position, add positions to pose.pose.position.xyz, it will do.
-        local_pos_pub.publish(pose);
+        if(main_loop){
+			    local_pos_pub.publish(pose);
+        }
+    
         //std::cout << real_position.pose.position.x << " " << real_position.pose.position.y << " " << real_position.pose.position.z << std::endl;
         ros::spinOnce();
         rate.sleep();

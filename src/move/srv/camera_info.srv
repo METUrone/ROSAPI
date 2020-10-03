@@ -1,0 +1,7 @@
+---
+uint32 height  
+uint32 width
+uint32 step
+string encoding
+uint8 is_bigendian
+uint8[] data
