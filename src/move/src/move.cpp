@@ -84,19 +84,6 @@ bool getService_pos(
     return true;
 }
 
-
-geometry_msgs::PoseStamped real_position;
-bool getService_pos(
-    move::Position::Request &req,
-    move::Position::Response &res
-) {
-    res.x = real_position.pose.position.x;
-    res.y = real_position.pose.position.y;
-    res.z = real_position.pose.position.z;
-    
-    return true;
-}
-
 bool getService_vel(
     move::vel::Request &req,
     move::vel::Response &res
