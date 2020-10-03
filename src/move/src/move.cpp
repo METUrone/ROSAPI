@@ -84,6 +84,19 @@ bool getService_pos(
     return true;
 }
 
+
+geometry_msgs::PoseStamped real_position;
+bool getService_pos(
+    move::Position::Request &req,
+    move::Position::Response &res
+) {
+    res.x = real_position.pose.position.x;
+    res.y = real_position.pose.position.y;
+    res.z = real_position.pose.position.z;
+    
+    return true;
+}
+
 bool getService_vel(
     move::vel::Request &req,
     move::vel::Response &res
@@ -200,6 +213,7 @@ void state_cb(const mavros_msgs::State::ConstPtr& msg){
 void battery_st(const sensor_msgs::BatteryState::ConstPtr& _battery){
     battery = *_battery;
 }
+
 
 void camera_msg(const sensor_msgs::Image &_image){
 	 camera_connected=true;
@@ -333,7 +347,8 @@ int main(int argc, char **argv){
         //Here we are constantly publishing the position.
         //If there is a service call or published position, add positions to pose.pose.position.xyz, it will do.
         if(main_loop){
-			local_pos_pub.publish(pose);}
+			    local_pos_pub.publish(pose);
+        }
     
         //std::cout << real_position.pose.position.x << " " << real_position.pose.position.y << " " << real_position.pose.position.z << std::endl;
         ros::spinOnce();
