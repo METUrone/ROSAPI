@@ -1,8 +1,0 @@
-float32 x_lin
-float32 y_lin
-float32 z_lin
-float32 x_ang
-float32 y_ang
-float32 z_ang
-float32 t
----
