@@ -21,6 +21,7 @@ geometry_msgs::PoseStamped pose_command;
 
 // Holds the pose of the drone
 geometry_msgs::PoseStamped pose;
+
 // Responses the position of the drone, x,y,z when the service is called.
 bool service_get_position(
     move::Position::Request &req,
@@ -65,6 +66,7 @@ bool service_command_relative_position(
 
 // Holds the battery state.
 sensor_msgs::BatteryState battery;
+
 // Responses the voltage, current and remaining percentage of battery when the service called.
 bool service_get_battery(
     move::Battery::Request &req,
@@ -81,8 +83,10 @@ bool service_get_battery(
 
 // Holds the camera frame if there is a camera connected and running.
 sensor_msgs::Image frame;
+
 // True if camera is connected, false otherwise.
 bool camera_connected=false;
+
 // Responses the frame of the camera
 // In response, gives height and width of the frame,
 // frame step, the representation is big endian or not, and the actual data.
@@ -107,6 +111,7 @@ bool service_get_camera_frame(
 // This holds the current state of the drone
 // Connected, the flight mode etc.
 mavros_msgs::State current_state;
+
 // Saves the state of the drone
 void state_tracker(const mavros_msgs::State::ConstPtr& _current_state){
     current_state = *_current_state;
