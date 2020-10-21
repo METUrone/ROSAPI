@@ -128,6 +128,9 @@ void pose_tracker(const geometry_msgs::PoseStamped::ConstPtr& _pose){
     pose = *_pose;
 }
 
+
+
+
 int main(int argc, char **argv){
     
     // Initializing node
