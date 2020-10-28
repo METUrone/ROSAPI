@@ -229,14 +229,14 @@ int main(int argc, char **argv){
     while(ros::ok()){
         if( (current_state.mode != "OFFBOARD") && (ros::Time::now()-last_request_time > ros::Duration(5.0)) ){
             if( set_flight_mode.call(set_mode) && set_mode.response.mode_sent){
-                ROS_INFO("Offboard enabled");
+                ROS_INFO_STREAM("Offboard enabled");
             }
             last_request_time = ros::Time::now();
         }
         else{
             if( !current_state.armed && (ros::Time::now() - last_request_time > ros::Duration(5.0)) ){
                 if( arm_command.call(arm) && arm.response.success){
-                    ROS_INFO("Vehicle armed");
+                    ROS_INFO_STREAM("Vehicle armed");
                 }
                 last_request_time = ros::Time::now();
             }
@@ -244,6 +244,7 @@ int main(int argc, char **argv){
 
         //Here we are constantly publishing the position.
 		relative_position_command_publisher.publish(pose_command);
+        ROS_INFO_STREAM(pose_command.pose.position.z);
     
         ros::spinOnce();
         rate.sleep();
