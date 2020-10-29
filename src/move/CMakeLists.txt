@@ -26,7 +26,7 @@ catkin_package(
 include_directories(include ${catkin_INCLUDE_DIRS})
 
 
-add_executable(move_node src/commander.cpp)
-add_executable(handle_node src/handle.cpp)
-target_link_libraries(move_node ${catkin_LIBRARIES})
-target_link_libraries(handle_node ${catkin_LIBRARIES})
+add_executable(commander src/commander.cpp)
+add_executable(handler src/handler.cpp)
+target_link_libraries(commander ${catkin_LIBRARIES})
+target_link_libraries(handler ${catkin_LIBRARIES})

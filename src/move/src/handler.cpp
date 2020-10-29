@@ -42,6 +42,9 @@ class Drone{
         bool moveGlobal(position pos);
         bool moveRelative(position pos);
         bool takeoff(float z);
+        bool land();
+        // bool arm(); Absolutely should add this function
+        // bool disarm(); Absolutely should add this function
 
     private:
         battery last_battery_status; // Stores the last known battery status, will be returned if there is a problem in service call. 
@@ -51,6 +54,7 @@ class Drone{
 
 
 };
+
 
 /**
  * @brief Construct a new Drone::Drone object
@@ -63,6 +67,8 @@ Drone::Drone(ros::NodeHandle _nh){
     last_position_info = {0,0,0,false};
     flying_status = false;
 }
+
+
 /**
  * @brief Takeoff method
  * This needs to be called for takeoff.
@@ -85,6 +91,37 @@ bool Drone::takeoff(float z){
         return true;
     }
 }
+
+
+/**
+ * @brief Lands the drone.
+ * If takePositionInfo succeded, sends the commands to land. If not, it do not send command, and returns false.
+ * Be careful that if there is a problem in landing, you have the full control to land. Watch the return.
+ * If things go wrong, the last thing you may do is closing commander. The drone will land automatically.
+ * 
+ * 
+ * @return true if command is sent successfully.
+ * @return false if not already flying or command couldn't be sent successfully.
+ */
+bool Drone::land(){
+    // In future, we may use landing flight mode to land, but not now. 
+    if(!flying_status){
+        return false;
+    }
+    position pos = takePositionInfo();
+    if(pos.success){
+        moveRelative({0,0,pos.z,false});
+        // To do
+        // Here may sleep a while, then check if landing is correctly done or not.
+        flying_status = false;
+        return true;
+    }
+    else{
+        return false;
+    }
+}
+
+
 /**
  * @brief Returns the GPS position of the vehicle.
  * If somehow the service call is not succeded, returns the latest position known, with position.success equals to false.
@@ -109,6 +146,8 @@ position Drone::takePositionInfo(){
         return response;
     }
 }
+
+
 /**
  * @brief Move method with global coordinates.
  * Be careful with this method. If you give (0,0,0), the vehicle will go to 'Null Island', and land in there. You may not want your drone to be wet.
@@ -141,6 +180,8 @@ bool Drone::moveGlobal(position pos){
         return false;
     }
 }
+
+
 /**
  * @brief Move method with relative coordinates.
  * Moves the drone with the coordinates, the reference point is the drone's itself.
@@ -174,6 +215,7 @@ bool Drone::moveRelative(position pos){
     }
 }
 
+
 /**
  * @brief Returns the battery's status
  * If somehow the service call is not succeded, returns the latest battery status known, with battery.success equals to false.
@@ -187,6 +229,7 @@ battery Drone::batteryStatus(){
     ros::ServiceClient client = nh.serviceClient<move::Battery>("battery_status");
 
     bool success = client.call(req,res);
+
     if(success){
         ROS_INFO_STREAM("batteryStatus call with success");
         battery response = {res.voltage, res.current, res.remaining, true};
@@ -201,13 +244,11 @@ battery Drone::batteryStatus(){
 }
 
 int main(int argc, char **argv){
-    ros::init(argc, argv, "handle_node");
+    ros::init(argc, argv, "handler");
     ros::NodeHandle nh;
     ros::Rate rate(0.2);
-    ROS_INFO_STREAM("Donguye geldi.");
     while(ros::ok()){
         position pos = {0,0,2,false};
-        //moveRelative(pos,nh);
         rate.sleep();
     }
 }

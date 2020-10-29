@@ -139,7 +139,7 @@ void pose_tracker(const geometry_msgs::PoseStamped::ConstPtr& _pose){
 int main(int argc, char **argv){
     
     // Initializing node
-    ros::init(argc, argv, "commander_node");
+    ros::init(argc, argv, "commander");
     ros::NodeHandle nh;
 
     // Subscriber topics
