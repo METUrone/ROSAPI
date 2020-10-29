@@ -3,20 +3,35 @@
 #include <move/PositionCommand.h>
 #include <move/Battery.h>
 
+/**
+ * @brief Position struct to send and receive positions to drone.
+ * Be careful that x,y and z's type is float. Type conversion may be a big problem sometimes.
+ * The success variable is not used for setting. When called a method to take data, it will be setted to false when there is a problem.
+ */
 typedef struct{
-    double x;
-    double y;
-    double z;
+    float x;
+    float y;
+    float z;
     bool success;
 } position;
 
+/**
+ * @brief Battery struct to receive the battery's status.
+ * Be careful that x,y and z's type is float. Type conversion may be a big problem sometimes.
+ * The success variable is not used for setting. When called a method to take data, it will be setted to false when there is a problem. 
+ */
 typedef struct{
-    double voltage;
-    double current;
-    double remaining;
+    float voltage;
+    float current;
+    float remaining;
     bool success;
 } battery;
-
+/**
+ * @brief Drone class to control the drone
+ * The class will be used always when controlling the drone with this API.
+ * It has basic functions, and is designed to send the commands, then give the control to you immediately. Meaning that you have full control of the drone.
+ * 
+ */
 class Drone{
     public:
         Drone(ros::NodeHandle _nh);
@@ -26,24 +41,38 @@ class Drone{
 
         bool moveGlobal(position pos);
         bool moveRelative(position pos);
-        bool takeoff(double z);
+        bool takeoff(float z);
 
     private:
-        battery last_battery_status = {0};
-        position last_position_info = {0};
-        ros::NodeHandle nh;
-        bool flying_status;
+        battery last_battery_status; // Stores the last known battery status, will be returned if there is a problem in service call. 
+        position last_position_info; // Stores the last known position info, will be returned if there is a problem in service call.
+        ros::NodeHandle nh; // Is used for service calls.
+        bool flying_status; // Tracks the flying status.
 
 
 };
 
-
+/**
+ * @brief Construct a new Drone::Drone object
+ * 
+ * @param _nh This nodeHandle will be used in all serviceClients.
+ */
 Drone::Drone(ros::NodeHandle _nh){
     nh = _nh;
+    last_battery_status = {0,0,0,false};
+    last_position_info = {0,0,0,false};
     flying_status = false;
 }
-
-bool Drone::takeoff(double z){
+/**
+ * @brief Takeoff method
+ * This needs to be called for takeoff.
+ * If already flying, it will give error.
+ * 
+ * @param z The height to takeoff, in meters.
+ * @return true: If the vehicle is not flying at the time.
+ * @return false: If the vehicle is flying already.
+ */
+bool Drone::takeoff(float z){
     if(flying_status == true){
         ROS_ERROR_STREAM("takeoff called but already flying!");
         return false;
@@ -56,7 +85,12 @@ bool Drone::takeoff(double z){
         return true;
     }
 }
-
+/**
+ * @brief Returns the GPS position of the vehicle.
+ * If somehow the service call is not succeded, returns the latest position known, with position.success equals to false.
+ * 
+ * @return position struct. x,y and z is the coordinates, and success is for service call succeded or not.
+ */
 position Drone::takePositionInfo(){
     move::Position::Response res;
     move::Position::Response req;
@@ -75,7 +109,15 @@ position Drone::takePositionInfo(){
         return response;
     }
 }
-
+/**
+ * @brief Move method with global coordinates.
+ * Be careful with this method. If you give (0,0,0), the vehicle will go to 'Null Island', and land in there. You may not want your drone to be wet.
+ * It is advisable to use moveGlobal after taking the coordinates with takePositionInfo method. Should not be called before takeoff, the method will give an error.
+ * 
+ * @param pos takes position to go, x,y, and z. The units are meters .The success parameter do not matter.
+ * @return true: If already flying, and the service call is succeded, returns true.
+ * @return false: If not in flying status, or there is a problem in service call, returns false.
+ */
 bool Drone::moveGlobal(position pos){
     if(!flying_status){
         return false;
@@ -99,7 +141,15 @@ bool Drone::moveGlobal(position pos){
         return false;
     }
 }
-
+/**
+ * @brief Move method with relative coordinates.
+ * Moves the drone with the coordinates, the reference point is the drone's itself.
+ * Meaning that if called with (1,0,0), the drone will go 1 meter in x axis. Should not be called before takeoff, the method will give an error.
+ * 
+ * @param pos takes position to go, x,y, and z. The units are meters .The success parameter do not matter.
+ * @return true: If already flying, and the service call is succeded, returns true.
+ * @return false: If not in flying status, or there is a problem in service call, returns false.
+ */
 bool Drone::moveRelative(position pos){
     if(!flying_status){
         return false;
@@ -124,6 +174,13 @@ bool Drone::moveRelative(position pos){
     }
 }
 
+/**
+ * @brief Returns the battery's status
+ * If somehow the service call is not succeded, returns the latest battery status known, with battery.success equals to false.
+ * 
+ * 
+ * @return battery struct. If the call succeded, returns battery.success true, otherwise false.
+ */
 battery Drone::batteryStatus(){
     move::Battery::Response res;
     move::Battery::Request req;
