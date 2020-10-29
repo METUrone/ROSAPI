@@ -17,7 +17,47 @@ typedef struct{
     bool success;
 } battery;
 
-position takePositionInfo(ros::NodeHandle nh){
+class Drone{
+    public:
+        Drone(ros::NodeHandle _nh);
+
+        position takePositionInfo();
+        battery batteryStatus();
+
+        bool moveGlobal(position pos);
+        bool moveRelative(position pos);
+        bool takeoff(double z);
+
+    private:
+        battery last_battery_status = {0};
+        position last_position_info = {0};
+        ros::NodeHandle nh;
+        bool flying_status;
+
+
+};
+
+
+Drone::Drone(ros::NodeHandle _nh){
+    nh = _nh;
+    flying_status = false;
+}
+
+bool Drone::takeoff(double z){
+    if(flying_status == true){
+        ROS_ERROR_STREAM("takeoff called but already flying!");
+        return false;
+    }
+    else{
+        moveRelative({0,0,z,true});
+        // Here may need to sleep a while, then control if movement is done or still running.
+        // But for now I do not write such a thing
+        flying_status = true;
+        return true;
+    }
+}
+
+position Drone::takePositionInfo(){
     move::Position::Response res;
     move::Position::Response req;
     ros::ServiceClient client = nh.serviceClient<move::Position>("position/position");
@@ -26,16 +66,21 @@ position takePositionInfo(ros::NodeHandle nh){
     if(success){
         ROS_INFO_STREAM("TakePositionInfo call with success");
         position response = {res.x, res.y, res.z, true};
+        last_position_info = {res.x, res.y ,res.z ,false};
         return response;
     }
     else{
         ROS_INFO_STREAM("TakePositionInfo call with error");
-        position response = {0, 0, 0, false};
+        position response = last_position_info;
         return response;
     }
 }
 
-bool moveGlobal(position pos, ros::NodeHandle nh){
+bool Drone::moveGlobal(position pos){
+    if(!flying_status){
+        return false;
+    }
+
     move::PositionCommand::Response res;
     move::PositionCommand::Request req;
     ros::ServiceClient client = nh.serviceClient<move::PositionCommand>("position/command_global");
@@ -55,7 +100,11 @@ bool moveGlobal(position pos, ros::NodeHandle nh){
     }
 }
 
-bool moveRelative(position pos, ros::NodeHandle nh){
+bool Drone::moveRelative(position pos){
+    if(!flying_status){
+        return false;
+    }
+
     move::PositionCommand::Response res;
     move::PositionCommand::Request req;
     ros::ServiceClient client = nh.serviceClient<move::PositionCommand>("position/command_relative");
@@ -75,7 +124,7 @@ bool moveRelative(position pos, ros::NodeHandle nh){
     }
 }
 
-battery batteryStatus(ros::NodeHandle nh){
+battery Drone::batteryStatus(){
     move::Battery::Response res;
     move::Battery::Request req;
     ros::ServiceClient client = nh.serviceClient<move::Battery>("battery_status");
@@ -84,11 +133,12 @@ battery batteryStatus(ros::NodeHandle nh){
     if(success){
         ROS_INFO_STREAM("batteryStatus call with success");
         battery response = {res.voltage, res.current, res.remaining, true};
+        last_battery_status = {res.voltage, res.current, res.remaining, false};
         return response;
     }
     else{
         ROS_INFO_STREAM("batteryStatus call with error");
-        battery response = {0, 0, 0, false};
+        battery response = last_battery_status;
         return response;
     }
 }
@@ -100,7 +150,7 @@ int main(int argc, char **argv){
     ROS_INFO_STREAM("Donguye geldi.");
     while(ros::ok()){
         position pos = {0,0,2,false};
-        moveRelative(pos,nh);
+        //moveRelative(pos,nh);
         rate.sleep();
     }
 }
