@@ -14,11 +14,10 @@ add_service_files(
 
 generate_messages()
 
-
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES move
-#  CATKIN_DEPENDS other_catkin_pkg
+  CATKIN_DEPENDS message_runtime
 #  DEPENDS system_lib
 )
 
@@ -26,7 +25,8 @@ catkin_package(
 include_directories(include ${catkin_INCLUDE_DIRS})
 
 
-add_executable(commander src/commander.cpp)
+
 add_executable(handler src/handler.cpp)
+add_executable(commander src/commander.cpp)
 target_link_libraries(commander ${catkin_LIBRARIES})
 target_link_libraries(handler ${catkin_LIBRARIES})
