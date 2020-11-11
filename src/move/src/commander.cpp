@@ -11,7 +11,7 @@
 #include <move/PositionCommand.h>
 #include <move/Battery.h>
 #include <move/Position.h>
-#include <move/CameraInfo.h>
+#include <move/Camera.h>
 
 
 // Holds the given command by the services provided
@@ -91,8 +91,8 @@ bool camera_connected=false;
 // In response, gives height and width of the frame,
 // frame step, the representation is big endian or not, and the actual data.
 bool service_get_camera_frame(
-    move::CameraInfo::Request &req,
-    move::CameraInfo::Response &res
+    move::Camera::Request &req,
+    move::Camera::Response &res
 ) {
 	if(!camera_connected){
 		ROS_ERROR_STREAM("You are using drone without a camera. Please use correct drone(3dr iris with fpv camera");

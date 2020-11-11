@@ -9,7 +9,7 @@ add_service_files(
     PositionCommand.srv
     Battery.srv
     Position.srv
-    CameraInfo.srv
+    Camera.srv
 )
 
 generate_messages()

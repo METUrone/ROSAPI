@@ -1,8 +1,4 @@
-#include <ros/ros.h>
 #include "Handler.hpp"
-#include <move/Position.h>
-#include <move/PositionCommand.h>
-#include <move/Battery.h>
 
 /**
  * @brief Construct a new Drone::Drone object
@@ -90,8 +86,7 @@ position Drone::takePositionInfo(){
     }
     else{
         ROS_INFO_STREAM("TakePositionInfo call with error");
-        position response = last_position_info;
-        return response;
+        return last_position_info;
     }
 }
 
@@ -186,9 +181,33 @@ battery Drone::batteryStatus(){
     }
     else{
         ROS_INFO_STREAM("batteryStatus call with error");
-        battery response = last_battery_status;
-        return response;
+        return last_battery_status;
     }
+}
+
+
+/**
+ * @brief Returns a camera frame
+ * 
+ * @return frame 
+ */
+frame Drone::camera(){
+    move::Camera::Response res;
+    move::Camera::Request req;
+
+    ros::ServiceClient client = nh.serviceClient<move::PositionCommand>("camera");
+
+    bool success = client.call(req,res);
+
+    if(success){
+        frame image = {res.data, true};
+        last_frame = {res.data, false};
+        return image;
+    }
+    else{
+        return last_frame;
+    }
+    
 }
 
 int main(int argc, char **argv){

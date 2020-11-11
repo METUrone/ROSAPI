@@ -2,6 +2,17 @@
 #define _MOVE_HANDLER_HPP_
 #include <ros/ros.h>
 
+#include <move/Position.h>
+#include <move/PositionCommand.h>
+#include <move/Battery.h>
+#include <move/Camera.h>
+
+typedef struct{
+    std::vector<unsigned char> frame;
+    bool success;
+} frame;
+
+
 
 /**
  * @brief Position struct to send and receive positions to drone.
@@ -38,6 +49,7 @@ class Drone{
 
         position takePositionInfo();
         battery batteryStatus();
+        frame camera();
 
         bool moveGlobal(position pos);
         bool moveRelative(position pos);
@@ -49,6 +61,7 @@ class Drone{
     private:
         battery last_battery_status; // Stores the last known battery status, will be returned if there is a problem in service call. 
         position last_position_info; // Stores the last known position info, will be returned if there is a problem in service call.
+        frame last_frame; // Stores the last known frame, will be returned if there is a problem in service call.
         ros::NodeHandle nh; // Is used for service calls.
         bool flying_status; // Tracks the flying status.
 
