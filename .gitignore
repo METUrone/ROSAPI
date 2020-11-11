@@ -2,3 +2,5 @@
 .vscode/c_cpp_properties.json
 .catkin_workspace
 src/CMakeLists.txt
+devel/
+build/

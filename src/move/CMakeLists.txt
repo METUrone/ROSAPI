@@ -6,23 +6,18 @@ find_package(catkin REQUIRED COMPONENTS roscpp geometry_msgs mavros_msgs message
 
 add_service_files(
     FILES
-    Pos.srv
+    PositionCommand.srv
     Battery.srv
-    Rot.srv
-    vel.srv
-    circle.srv
     Position.srv
-    Empty.srv
-    camera_info.srv
+    CameraInfo.srv
 )
 
 generate_messages()
 
-
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES move
-#  CATKIN_DEPENDS other_catkin_pkg
+  CATKIN_DEPENDS message_runtime
 #  DEPENDS system_lib
 )
 
@@ -30,7 +25,8 @@ catkin_package(
 include_directories(include ${catkin_INCLUDE_DIRS})
 
 
-add_executable(move_node src/move.cpp)
-#add_executable(handle_node src/handle.cpp)
-target_link_libraries(move_node ${catkin_LIBRARIES})
-#target_link_libraries(handle_node ${catkin_LIBRARIES})
+
+add_executable(handler src/handler.cpp)
+add_executable(commander src/commander.cpp)
+target_link_libraries(commander ${catkin_LIBRARIES})
+target_link_libraries(handler ${catkin_LIBRARIES})
