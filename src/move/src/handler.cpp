@@ -28,10 +28,10 @@ bool Drone::takeoff(float z){
         return false;
     }
     else{
+        flying_status = true;
         moveRelative({0,0,z,true});
         // Here may need to sleep a while, then control if movement is done or still running.
         // But for now I do not write such a thing
-        flying_status = true;
         return true;
     }
 }
@@ -214,8 +214,10 @@ int main(int argc, char **argv){
     ros::init(argc, argv, "handler");
     ros::NodeHandle nh;
     ros::Rate rate(0.2);
+    Drone drone = Drone(nh);
+    drone.takeoff(5);
     while(ros::ok()){
-        position pos = {0,0,2,false};
+        position pos = {0,0,5,false};
         rate.sleep();
     }
 }
