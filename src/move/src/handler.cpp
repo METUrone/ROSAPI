@@ -54,7 +54,7 @@ bool Drone::land(){
     }
     position pos = takePositionInfo();
     if(pos.success){
-        moveRelative({0,0,pos.z,false});
+        moveRelative({0,0,-pos.z,false});
         // To do
         // Here may sleep a while, then check if landing is correctly done or not.
         flying_status = false;
