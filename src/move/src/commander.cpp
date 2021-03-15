@@ -244,7 +244,7 @@ int main(int argc, char **argv){
 
         //Here we are constantly publishing the position.
 		relative_position_command_publisher.publish(pose_command);
-        ROS_INFO_STREAM(pose_command.pose.position.z);
+        //ROS_INFO_STREAM(pose_command.pose.position.z);
     
         ros::spinOnce();
         rate.sleep();

@@ -1,0 +1,168 @@
+\hypertarget{classDrone}{}\doxysection{Drone Class Reference}
+\label{classDrone}\index{Drone@{Drone}}
+
+
+\mbox{\hyperlink{classDrone}{Drone}} class to control the drone The class will be used always when controlling the drone with this API. It has basic functions, and is designed to send the commands, then give the control to you immediately. Meaning that you have full control of the drone.  
+
+
+
+
+{\ttfamily \#include $<$Handler.\+hpp$>$}
+
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{classDrone_ad23f24bf9a6c70eff3697996a4cb8553}{Drone}} (ros\+::\+Node\+Handle \+\_\+nh)
+\begin{DoxyCompactList}\small\item\em Construct a new \mbox{\hyperlink{classDrone_ad23f24bf9a6c70eff3697996a4cb8553}{Drone\+::\+Drone}} object. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{structposition}{position}} \mbox{\hyperlink{classDrone_a095089f73e0077a6d4e9a3696592392e}{take\+Position\+Info}} ()
+\begin{DoxyCompactList}\small\item\em Returns the GPS position of the vehicle. If somehow the service call is not succeded, returns the latest position known, with position.\+success equals to false. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{structbattery}{battery}} \mbox{\hyperlink{classDrone_a47bd484d6ac64781005d4c9e3023f642}{battery\+Status}} ()
+\begin{DoxyCompactList}\small\item\em Returns the battery\textquotesingle{}s status If somehow the service call is not succeded, returns the latest battery status known, with battery.\+success equals to false. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{structframe}{frame}} \mbox{\hyperlink{classDrone_a57fca9f96573208ce335acb2056477c7}{camera}} ()
+\begin{DoxyCompactList}\small\item\em Returns a camera frame. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{classDrone_a1015edc051c90cca5eb61e2574367fec}{move\+Global}} (\mbox{\hyperlink{structposition}{position}} pos)
+\begin{DoxyCompactList}\small\item\em Move method with global coordinates. Be careful with this method. If you give (0,0,0), the vehicle will go to \textquotesingle{}Null Island\textquotesingle{}, and land in there. You may not want your drone to be wet. It is advisable to use move\+Global after taking the coordinates with take\+Position\+Info method. Should not be called before takeoff, the method will give an error. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{classDrone_a4fa742541ca31ac899a320392ba5bc1a}{move\+Relative}} (\mbox{\hyperlink{structposition}{position}} pos)
+\begin{DoxyCompactList}\small\item\em Move method with relative coordinates. Moves the drone with the coordinates, the reference point is the drone\textquotesingle{}s itself. Meaning that if called with (1,0,0), the drone will go 1 meter in x axis. Should not be called before takeoff, the method will give an error. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{classDrone_aec048b236af46db941c693746cc16b31}{takeoff}} (float z)
+\begin{DoxyCompactList}\small\item\em Takeoff method This needs to be called for takeoff. If already flying, it will give error. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{classDrone_a0a4f029ccc48085ea7eafb69c27f6499}{land}} ()
+\begin{DoxyCompactList}\small\item\em Lands the drone. If take\+Position\+Info succeded, sends the commands to land. If not, it do not send command, and returns false. Be careful that if there is a problem in landing, you have the full control to land. Watch the return. If things go wrong, the last thing you may do is closing commander. The drone will land automatically. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\mbox{\hyperlink{classDrone}{Drone}} class to control the drone The class will be used always when controlling the drone with this API. It has basic functions, and is designed to send the commands, then give the control to you immediately. Meaning that you have full control of the drone. 
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\mbox{\Hypertarget{classDrone_ad23f24bf9a6c70eff3697996a4cb8553}\label{classDrone_ad23f24bf9a6c70eff3697996a4cb8553}} 
+\index{Drone@{Drone}!Drone@{Drone}}
+\index{Drone@{Drone}!Drone@{Drone}}
+\doxysubsubsection{\texorpdfstring{Drone()}{Drone()}}
+{\footnotesize\ttfamily Drone\+::\+Drone (\begin{DoxyParamCaption}\item[{ros\+::\+Node\+Handle}]{\+\_\+nh }\end{DoxyParamCaption})}
+
+
+
+Construct a new \mbox{\hyperlink{classDrone_ad23f24bf9a6c70eff3697996a4cb8553}{Drone\+::\+Drone}} object. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \+\_\+nh} & This node\+Handle will be used in all service\+Clients. \\
+\hline
+\end{DoxyParams}
+
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{classDrone_a47bd484d6ac64781005d4c9e3023f642}\label{classDrone_a47bd484d6ac64781005d4c9e3023f642}} 
+\index{Drone@{Drone}!batteryStatus@{batteryStatus}}
+\index{batteryStatus@{batteryStatus}!Drone@{Drone}}
+\doxysubsubsection{\texorpdfstring{batteryStatus()}{batteryStatus()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structbattery}{battery}} Drone\+::battery\+Status (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+
+
+Returns the battery\textquotesingle{}s status If somehow the service call is not succeded, returns the latest battery status known, with battery.\+success equals to false. 
+
+\begin{DoxyReturn}{Returns}
+battery struct. If the call succeded, returns battery.\+success true, otherwise false. 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classDrone_a57fca9f96573208ce335acb2056477c7}\label{classDrone_a57fca9f96573208ce335acb2056477c7}} 
+\index{Drone@{Drone}!camera@{camera}}
+\index{camera@{camera}!Drone@{Drone}}
+\doxysubsubsection{\texorpdfstring{camera()}{camera()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structframe}{frame}} Drone\+::camera (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+
+
+Returns a camera frame. 
+
+\begin{DoxyReturn}{Returns}
+frame 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classDrone_a0a4f029ccc48085ea7eafb69c27f6499}\label{classDrone_a0a4f029ccc48085ea7eafb69c27f6499}} 
+\index{Drone@{Drone}!land@{land}}
+\index{land@{land}!Drone@{Drone}}
+\doxysubsubsection{\texorpdfstring{land()}{land()}}
+{\footnotesize\ttfamily bool Drone\+::land (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+
+
+Lands the drone. If take\+Position\+Info succeded, sends the commands to land. If not, it do not send command, and returns false. Be careful that if there is a problem in landing, you have the full control to land. Watch the return. If things go wrong, the last thing you may do is closing commander. The drone will land automatically. 
+
+\begin{DoxyReturn}{Returns}
+true if command is sent successfully. 
+
+false if not already flying or command couldn\textquotesingle{}t be sent successfully. 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classDrone_a1015edc051c90cca5eb61e2574367fec}\label{classDrone_a1015edc051c90cca5eb61e2574367fec}} 
+\index{Drone@{Drone}!moveGlobal@{moveGlobal}}
+\index{moveGlobal@{moveGlobal}!Drone@{Drone}}
+\doxysubsubsection{\texorpdfstring{moveGlobal()}{moveGlobal()}}
+{\footnotesize\ttfamily bool Drone\+::move\+Global (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structposition}{position}}}]{pos }\end{DoxyParamCaption})}
+
+
+
+Move method with global coordinates. Be careful with this method. If you give (0,0,0), the vehicle will go to \textquotesingle{}Null Island\textquotesingle{}, and land in there. You may not want your drone to be wet. It is advisable to use move\+Global after taking the coordinates with take\+Position\+Info method. Should not be called before takeoff, the method will give an error. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pos} & takes position to go, x,y, and z. The units are meters .The success parameter do not matter. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true\+: If already flying, and the service call is succeded, returns true. 
+
+false\+: If not in flying status, or there is a problem in service call, returns false. 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classDrone_a4fa742541ca31ac899a320392ba5bc1a}\label{classDrone_a4fa742541ca31ac899a320392ba5bc1a}} 
+\index{Drone@{Drone}!moveRelative@{moveRelative}}
+\index{moveRelative@{moveRelative}!Drone@{Drone}}
+\doxysubsubsection{\texorpdfstring{moveRelative()}{moveRelative()}}
+{\footnotesize\ttfamily bool Drone\+::move\+Relative (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structposition}{position}}}]{pos }\end{DoxyParamCaption})}
+
+
+
+Move method with relative coordinates. Moves the drone with the coordinates, the reference point is the drone\textquotesingle{}s itself. Meaning that if called with (1,0,0), the drone will go 1 meter in x axis. Should not be called before takeoff, the method will give an error. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pos} & takes position to go, x,y, and z. The units are meters .The success parameter do not matter. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true\+: If already flying, and the service call is succeded, returns true. 
+
+false\+: If not in flying status, or there is a problem in service call, returns false. 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classDrone_aec048b236af46db941c693746cc16b31}\label{classDrone_aec048b236af46db941c693746cc16b31}} 
+\index{Drone@{Drone}!takeoff@{takeoff}}
+\index{takeoff@{takeoff}!Drone@{Drone}}
+\doxysubsubsection{\texorpdfstring{takeoff()}{takeoff()}}
+{\footnotesize\ttfamily bool Drone\+::takeoff (\begin{DoxyParamCaption}\item[{float}]{z }\end{DoxyParamCaption})}
+
+
+
+Takeoff method This needs to be called for takeoff. If already flying, it will give error. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em z} & The height to takeoff, in meters. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true\+: If the vehicle is not flying at the time. 
+
+false\+: If the vehicle is flying already. 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classDrone_a095089f73e0077a6d4e9a3696592392e}\label{classDrone_a095089f73e0077a6d4e9a3696592392e}} 
+\index{Drone@{Drone}!takePositionInfo@{takePositionInfo}}
+\index{takePositionInfo@{takePositionInfo}!Drone@{Drone}}
+\doxysubsubsection{\texorpdfstring{takePositionInfo()}{takePositionInfo()}}
+{\footnotesize\ttfamily \mbox{\hyperlink{structposition}{position}} Drone\+::take\+Position\+Info (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+
+
+Returns the GPS position of the vehicle. If somehow the service call is not succeded, returns the latest position known, with position.\+success equals to false. 
+
+\begin{DoxyReturn}{Returns}
+position struct. x,y and z is the coordinates, and success is for service call succeded or not. 
+\end{DoxyReturn}

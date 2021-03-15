@@ -28,7 +28,7 @@ typedef struct{
 
 /**
  * @brief Battery struct to receive the battery's status.
- * Be careful that x,y and z's type is float. Type conversion may be a big problem sometimes.
+ * Be careful that voltage, current and remaining's type is float. Type conversion may be a big problem sometimes.
  * The success variable is not used for setting. When called a method to take data, it will be setted to false when there is a problem. 
  */
 typedef struct{
