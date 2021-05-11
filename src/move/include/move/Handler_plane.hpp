@@ -5,6 +5,9 @@
 #include <move/PositionCommand.h>
 #include <move/Battery.h>
 #include <move/Camera.h>
+#include <move/TkoffLandCommand.h>
+#include <move/ArmDisarmCommand.h>
+#include <move/State.h>
 
 typedef struct{
     std::vector<unsigned char> frame;
@@ -52,9 +55,9 @@ class Plane{
         bool moveGlobal(position pos);
         bool moveRelative(position pos);
         bool takeoff(float z);
-        bool land();
-        // bool arm(); Absolutely should add this function
-        // bool disarm(); Absolutely should add this function
+        bool land(float z);
+        bool arm();
+        bool disarm();
 
     private:
         battery last_battery_status; // Stores the last known battery status, will be returned if there is a problem in service call. 

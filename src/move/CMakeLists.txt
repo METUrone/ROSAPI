@@ -7,10 +7,18 @@ find_package(catkin REQUIRED COMPONENTS roscpp geometry_msgs sensor_msgs mavros_
 add_service_files(
     FILES
     PositionCommand.srv
+    ArmDisarmCommand.srv
+    TkoffLandCommand.srv
+    State.srv
     Battery.srv
     Position.srv
     Camera.srv
 )
+
+# add_message_files(
+#   FILES
+#   /*message files*/
+# )
 
 generate_messages()
 

@@ -17,10 +17,14 @@
 #include <move/PositionCommand.h>
 #include <move/Battery.h>
 #include <move/Position.h>
+#include <move/TkoffLandCommand.h>
+#include <move/ArmDisarmCommand.h>
+#include <move/State.h>
 
 class UAV{
     private:
     // Variables for holding the current state of the vehicle
+    static bool onAir;
     static mavros_msgs::State current_state;
     static sensor_msgs::BatteryState battery;
     static geometry_msgs::PoseStamped pose;
@@ -30,7 +34,8 @@ class UAV{
     ros::ServiceClient client_takeoff,client_land,client_set_mode,client_arm,client_param_get,client_param_set;
     ros::Subscriber WP_sub,state_sub,battery_status_sub,position_sub;
     ros::Publisher rel_pos_cmd_pub;
-    ros::ServiceServer server_battery,server_global_move_command,server_relative_move_command,server_position;
+    ros::ServiceServer server_battery,server_global_move_command,server_relative_move_command,
+    server_position,server_tkoff_land,server_arm_disarm,server_state;
 
     UAV(ros::NodeHandle n);
 
@@ -58,6 +63,10 @@ class UAV{
 
     bool takeoff(float altitude,bool blocking);
 
+    bool land(float altitude,bool blocking);
+
+    bool isAirbourne(void);
+
     static void WP_callback(const mavros_msgs::WaypointReached::ConstPtr& msg);
 
     static void state_tracker(const mavros_msgs::State::ConstPtr& _current_state);
@@ -72,5 +81,11 @@ class UAV{
 
     static bool service_command_relative_position(move::PositionCommand::Request &req,move::PositionCommand::Response &res);
 
-    static bool service_get_battery(move::Battery::Request &req,move::Battery::Response &res); 
+    static bool service_get_battery(move::Battery::Request &req,move::Battery::Response &res);
+
+    static bool service_command_tkoff_land(move::TkoffLandCommand::Request &req, move::TkoffLandCommand::Response &res);
+
+    static bool service_command_arm_disarm(move::ArmDisarmCommand::Request &req, move::ArmDisarmCommand::Response &res);
+
+    static bool service_get_state(move::State::Request &req,move::State::Response &res);
 };

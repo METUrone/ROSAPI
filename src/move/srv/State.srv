@@ -1,0 +1,4 @@
+---
+bool onAir
+bool armed
+string flightMode

@@ -1,11 +1,15 @@
 #include "move/commander_plane.hpp"
 
+#define TRY(__function__) for(int i = 0; (!__function__) && (i < 5) ;i++) {ros::Duration(1.0).sleep(); ROS_INFO("Trying Again");}
+
+//******************Static Variables********************
+bool UAV::onAir = false;
 mavros_msgs::State UAV::current_state = {};
 sensor_msgs::BatteryState UAV::battery = {};
 geometry_msgs::PoseStamped UAV::pose = {};
-
-UAV::UAV(ros::NodeHandle n){
-
+//********************Constructer***********************
+UAV::UAV(ros::NodeHandle n)
+{
     this->client_takeoff = n.serviceClient<mavros_msgs::CommandTOL>("mavros/cmd/takeoff");
 
     this->client_land = n.serviceClient<mavros_msgs::CommandTOL>("mavros/cmd/land");
@@ -28,15 +32,22 @@ UAV::UAV(ros::NodeHandle n){
 
     this->rel_pos_cmd_pub = n.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
 
-    this->server_battery = n.advertiseService("battery_status",&UAV::service_get_battery);
+    this->server_battery = n.advertiseService("move/get/battery_status",&UAV::service_get_battery);
     
-    this->server_global_move_command = n.advertiseService("position/command_global",&UAV::service_command_global_position);
+    this->server_global_move_command = n.advertiseService("move/cmd/position_global",&UAV::service_command_global_position);
     
-    this->server_relative_move_command = n.advertiseService("position/command_relative",&UAV::service_command_relative_position);
+    this->server_relative_move_command = n.advertiseService("move/cmd/position_relative",&UAV::service_command_relative_position);
     
-    this->server_position = n.advertiseService("position/position",&UAV::service_get_position);
+    this->server_position = n.advertiseService("move/get/position",&UAV::service_get_position);
+
+    this->server_tkoff_land = n.advertiseService("move/cmd/tkoff_land",&UAV::service_command_tkoff_land);
+
+    this->server_arm_disarm = n.advertiseService("move/cmd/arm_disarm",&UAV::service_command_arm_disarm);
+
+    this->server_state = n.advertiseService("move/get/state",&UAV::service_get_state);
 }
 
+//**********************Getters************************
 geometry_msgs::Point UAV::getPosition(void)
 {
     return UAV::pose.pose.position;
@@ -52,6 +63,11 @@ mavros_msgs::State UAV::getState(void)
     return UAV::current_state;
 }
 
+bool UAV::isAirbourne()
+{
+    return UAV::onAir;
+}
+//******************Instance Methods********************
 bool UAV::setTakeoff(float altitude)
 {
     /* CommandTOL
@@ -115,6 +131,8 @@ bool UAV::set_mode(const char* mode)
     uint8 MAV_MODE_AUTO_ARMED = 220
     uint8 MAV_MODE_TEST_DISARMED = 66
     uint8 MAV_MODE_TEST_ARMED = 194
+    # custom modes
+    http://wiki.ros.org/mavros/CustomModes
 
     uint8 base_mode # filled by MAV_MODE enum value or 0 if custom_mode != ''
     string custom_mode # string mode representation or integer
@@ -129,7 +147,7 @@ bool UAV::set_mode(const char* mode)
             ROS_INFO("%s mode set!",mode);
             return true;
         }else{
-            ROS_WARN("SET_MODE Failed!");
+            ROS_WARN("SET_MODE %s Failed!",mode);
         }
     }else{
         ROS_ERROR("Failed to call service set_mode!");
@@ -150,10 +168,10 @@ bool UAV::arm(bool state=true)
     if (this->client_arm.call(srv))
     {
         if(srv.response.success){
-            ROS_INFO("Vehicle armed!");
+            ROS_INFO("Vehicle %sarmed!", state ? "" : "dis");
             return true;
         }else{
-            ROS_WARN("Failed to arm/disarm!");
+            ROS_WARN("Failed to %sarm!", state ? "" : "dis");
         }
     }else{
         ROS_ERROR("Failed to call service arm!");
@@ -161,7 +179,8 @@ bool UAV::arm(bool state=true)
     return false;
 }
 
-bool UAV::parameterSet(const char* param_id,int integer=0,float real=0.0){
+bool UAV::parameterSet(const char* param_id,int integer=0,float real=0.0)
+{
     /* ParamSet
     string param_id
     mavros_msgs/ParamValue value
@@ -187,7 +206,8 @@ bool UAV::parameterSet(const char* param_id,int integer=0,float real=0.0){
     return false;
 }
 
-bool UAV::parameterGet(const char* param_id,mavros_msgs::ParamValue& response){
+bool UAV::parameterGet(const char* param_id,mavros_msgs::ParamValue& response)
+{
     /* ParamGet
     string param_id
     ---
@@ -200,7 +220,7 @@ bool UAV::parameterGet(const char* param_id,mavros_msgs::ParamValue& response){
     {
         if(srv.response.success){
             response = srv.response.value;
-            ROS_INFO("%s parameter: (%d, %f)",param_id,response.integer,response.real);
+            ROS_INFO("%s parameter: (%ld, %f)",param_id,response.integer,response.real);
             return true;
         }else{
             ROS_WARN("Failed to obtain the %s parameter!",param_id);
@@ -213,12 +233,6 @@ bool UAV::parameterGet(const char* param_id,mavros_msgs::ParamValue& response){
 
 bool UAV::get_failsafe(bool& DLL,bool& RCL)
 {
-    /* ParamGet
-    string param_id
-    ---
-    bool success
-    ParamValue value
-    */
     mavros_msgs::ParamValue resp;
     if (this->parameterGet("NAV_DLL_ACT",resp))
     {
@@ -240,13 +254,6 @@ bool UAV::get_failsafe(bool& DLL,bool& RCL)
 
 bool UAV::set_failsafe(bool DLL=false,bool RCL=false)
 {
-    /* ParamSet
-    string param_id
-    mavros_msgs/ParamValue value
-    ---
-    bool success
-    mavros_msgs/ParamValue value
-    */
     if (this->parameterSet("NAV_DLL_ACT",DLL,DLL))
     {
         ROS_INFO("Set DL Failsafe to %s", DLL ? "true" : "false");
@@ -263,6 +270,39 @@ bool UAV::set_failsafe(bool DLL=false,bool RCL=false)
     return false;
 }
 
+bool UAV::takeoff(float altitude,bool blocking=true)
+{
+    TRY(this->parameterSet("RWTO_TKOFF",1));
+    TRY(this->parameterSet("FW_CLMBOUT_DIFF",0,altitude));
+    TRY(this->arm());
+    TRY(this->set_mode("AUTO.TAKEOFF"));
+    ros::Rate rate(20.0);
+    while(this->getState().mode == "AUTO.TAKEOFF" && ros::ok() && blocking){
+        ros::spinOnce();
+        rate.sleep();
+    }
+    UAV::onAir = true;
+    return true;
+}
+
+bool UAV::land(float altitude=0.0, bool blocking=true)
+{
+    TRY(this->parameterSet("FW_LND_FLALT",0,altitude+10.0));
+    TRY(this->parameterSet("FW_LND_ANG",0,2.0));
+    TRY(this->setLand(altitude+5));
+    //TRY(this->set_mode("AUTO.LAND"));
+    ros::Rate rate(20.0);
+    while(this->getState().mode == "AUTO.LAND" && ros::ok() && blocking){
+        ros::spinOnce();
+        rate.sleep();
+    }
+    UAV::onAir = false;
+    return true;
+}
+
+//************************Static Methods**************************
+
+// Announces when a waypoint is reached.
 void UAV::WP_callback(const mavros_msgs::WaypointReached::ConstPtr& msg)
 {
     /* WaypointReached
@@ -280,7 +320,8 @@ void UAV::WP_callback(const mavros_msgs::WaypointReached::ConstPtr& msg)
 }
 
 // Saves the state of the drone
-void UAV::state_tracker(const mavros_msgs::State::ConstPtr& _current_state){
+void UAV::state_tracker(const mavros_msgs::State::ConstPtr& _current_state)
+{
     /* State
     std_msgs/Header header
     bool connected
@@ -294,7 +335,8 @@ void UAV::state_tracker(const mavros_msgs::State::ConstPtr& _current_state){
 }
 
 // Saves the battery state of the drone
-void UAV::battery_tracker(const sensor_msgs::BatteryState::ConstPtr& _battery){
+void UAV::battery_tracker(const sensor_msgs::BatteryState::ConstPtr& _battery)
+{
     /* BatteryState
     std_msgs/Header  header
     float32 voltage          # Voltage in Volts (Mandatory)
@@ -320,7 +362,8 @@ void UAV::battery_tracker(const sensor_msgs::BatteryState::ConstPtr& _battery){
 }
 
 // Saves the pose of the drone
-void UAV::pose_tracker(const geometry_msgs::PoseStamped::ConstPtr& _pose){
+void UAV::pose_tracker(const geometry_msgs::PoseStamped::ConstPtr& _pose)
+{
     /* PoseStamped
     std_msgs/Header header
     geometry_msgs/Pose pose
@@ -356,37 +399,48 @@ geometry_msgs::PoseStamped pose_command;
 // the requested x,y,z and t is put to the pose_command.
 bool UAV::service_command_global_position(move::PositionCommand::Request &req,move::PositionCommand::Response &res)
 {
-    ROS_INFO_STREAM("Move service is called");
     pose_command.pose.position.x = req.x;
     pose_command.pose.position.y = req.y;
     pose_command.pose.position.z = req.z;
+    ROS_INFO("Position set to (%f,%f,%f)",pose_command.pose.position.x,pose_command.pose.position.y,pose_command.pose.position.z);
     return true;
 }
 
-// When the service called,
-// the requested x,y,z and t is added to the pose_command.
+// When the service called, the requested x,y,z and t is added to the pose_command.
 bool UAV::service_command_relative_position(move::PositionCommand::Request &req,move::PositionCommand::Response &res)
 {
-    ROS_INFO_STREAM("Move service is called");
     pose_command.pose.position.x += req.x;
     pose_command.pose.position.y += req.y;
     pose_command.pose.position.z += req.z;
+    ROS_INFO("Position set to (%f,%f,%f)",pose_command.pose.position.x,pose_command.pose.position.y,pose_command.pose.position.z);
     return true;
 }
 
-bool UAV::takeoff(float altitude,bool blocking=true){
-    this->parameterSet("RWTO_TKOFF",1);
-    this->setTakeoff(altitude);
-    this->arm();
-    this->set_mode("AUTO.TAKEOFF");
-    ros::Rate rate(20.0);
-    while(this->getState().mode == "AUTO.TAKEOFF" && ros::ok() && blocking){
-        ros::spinOnce();
-        rate.sleep();
-    }
+bool onAirCommand = false;
+int armCommand = 0;
+float TOLaltitude = 0.0;
+
+bool UAV::service_command_tkoff_land(move::TkoffLandCommand::Request &req, move::TkoffLandCommand::Response &res)
+{
+    onAirCommand = req.cmd;
+    TOLaltitude = req.altitude;
     return true;
 }
 
+bool UAV::service_command_arm_disarm(move::ArmDisarmCommand::Request &req, move::ArmDisarmCommand::Response &res)
+{
+    armCommand = ((int) req.cmd)+1;
+    return true;
+}
+
+bool UAV::service_get_state(move::State::Request &req,move::State::Response &res)
+{
+    res.onAir = UAV::onAir;
+    res.armed = UAV::current_state.armed;
+    res.flightMode = UAV::current_state.mode;
+}
+
+//*************************MAIN****************************
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "commander_plane");
@@ -404,40 +458,57 @@ int main(int argc, char **argv)
 
     // Read Datalink and RC failsafe STATUS. Remove if present (for SITL)!
     bool DL_failsafe,RC_failsafe;
-    plane.get_failsafe(DL_failsafe,RC_failsafe);
-    if (DL_failsafe || RC_failsafe) plane.set_failsafe(false,false);
+    TRY(plane.get_failsafe(DL_failsafe,RC_failsafe));
+    if (DL_failsafe || RC_failsafe) TRY(plane.set_failsafe(false,false));
 
     //send a few setpoints before starting
-    for(int i = 40; ros::ok() && i > 0; --i){ // The number of loops may be decreased probably.
+    for(int i = 20; ros::ok() && i > 0; --i){ // The number of loops may be decreased probably.
         plane.rel_pos_cmd_pub.publish(pose_command);
         ros::spinOnce();
         rate.sleep();
     }
-    
-    pose_command.pose.position.x = 30;
-    pose_command.pose.position.y = 30;
-    pose_command.pose.position.z = 6;
+
+    plane.set_mode("OFFBOARD");
+
+    // The Loop
     geometry_msgs::Point pos;
     ros::Time last_request_time = ros::Time::now();
-    while(ros::ok()){
-
-        if( (plane.getState().mode != "OFFBOARD") && (ros::Time::now()-last_request_time > ros::Duration(3.0)) ){
-            if( plane.set_mode("OFFBOARD")){
-                //ROS_INFO_STREAM("Offboard enabled");
-            }
+    while(ros::ok())
+    {
+        if((plane.getState().mode != "OFFBOARD") && plane.isAirbourne() && (ros::Time::now()-last_request_time > ros::Duration(3.0)))
+        {
+            plane.set_mode("OFFBOARD");
             last_request_time = ros::Time::now();
         }
-        else{
-            if( !plane.getState().armed && (ros::Time::now() - last_request_time > ros::Duration(3.0)) ){
-                plane.takeoff(pose_command.pose.position.z);
-                last_request_time = ros::Time::now();
-            }
+        
+        if((!plane.isAirbourne()) && onAirCommand && (ros::Time::now() - last_request_time > ros::Duration(3.0)))
+        {
+            plane.takeoff(TOLaltitude);
+            last_request_time = ros::Time::now();
         }
 
-        plane.rel_pos_cmd_pub.publish(pose_command);
+        if (plane.isAirbourne() && (!onAirCommand) && (ros::Time::now() - last_request_time > ros::Duration(3.0)))
+        {
+            plane.land(TOLaltitude);
+            last_request_time = ros::Time::now();
+        }
+
+        if ((!plane.getState().armed) && (armCommand==2) && (!plane.isAirbourne()) && (ros::Time::now()-last_request_time > ros::Duration(3.0)))
+        {
+            if(plane.arm(true)) armCommand = 0;
+            last_request_time = ros::Time::now();
+        }
+        
+        if (plane.getState().armed && (armCommand==1) && (!plane.isAirbourne()) && (ros::Time::now()-last_request_time > ros::Duration(3.0)))
+        {
+            if(plane.arm(false)) armCommand = 0;
+            last_request_time = ros::Time::now();
+        }
+
+        plane.rel_pos_cmd_pub.publish(pose_command);// Set next point
         
         pos = plane.getPosition();
-        ROS_INFO("Pos: %f,%f,%f",pos.x,pos.y,pos.z);
+        ROS_DEBUG("Pos: %f,%f,%f",pos.x,pos.y,pos.z);
 
         ros::spinOnce();
         rate.sleep();

@@ -1,0 +1,3 @@
+bool cmd # Takeoff=True  Land=False
+float32 altitude
+---
