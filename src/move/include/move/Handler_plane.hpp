@@ -55,7 +55,9 @@ class Plane{
         bool moveGlobal(position pos);
         bool moveRelative(position pos);
         bool takeoff(float z);
-        bool land(float z);
+        bool land(float z); // TODO: Could not land in simulation. Needs fixing.
+        move::State getState();
+        bool isArmed();
         bool arm();
         bool disarm();
 

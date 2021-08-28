@@ -67,6 +67,23 @@ bool Plane::land(float z){
     }
 }
 
+move::State Plane::getState(){
+    move::State srv;
+    ros::ServiceClient client = nh.serviceClient<move::State>("move/get/state");
+    
+    bool success = client.call(srv);
+    if(success){
+        ROS_INFO_STREAM("Arm call with success");
+    }else{
+        ROS_WARN_STREAM("Could not get the UAV State!");
+    }
+    return srv;
+}
+
+bool Plane::isArmed(){
+    return this->getState().response.armed;
+}
+
 bool Plane::arm(){
     move::ArmDisarmCommand srv;
     srv.request.cmd = true;

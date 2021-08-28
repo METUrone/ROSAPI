@@ -6,6 +6,7 @@
 #include <move/PositionCommand.h>
 #include <move/Battery.h>
 #include <move/Camera.h>
+#include <move/ArmDisarmCommand.h>
 
 typedef struct{
     std::vector<unsigned char> frame;
@@ -55,8 +56,8 @@ class Drone{
         bool moveRelative(position pos);
         bool takeoff(float z);
         bool land();
-        // bool arm(); Absolutely should add this function
-        // bool disarm(); Absolutely should add this function
+        bool arm(); //Absolutely should add this function
+        bool disarm(); //Absolutely should add this function
 
     private:
         battery last_battery_status; // Stores the last known battery status, will be returned if there is a problem in service call. 

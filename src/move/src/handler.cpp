@@ -12,6 +12,21 @@ Drone::Drone(ros::NodeHandle _nh){
     flying_status = false;
 }
 
+bool Drone::arm(){
+    move::ArmDisarmCommand::Request req;
+    move::ArmDisarmCommand::Response res;
+    ros::ServiceClient client = nh.serviceClient<move::ArmDisarmCommand>("arm_disarm");
+    req.cmd = true;
+    return client.call(req,res);
+}
+
+bool Drone::disarm(){
+    move::ArmDisarmCommand::Request req;
+    move::ArmDisarmCommand::Response res;
+    ros::ServiceClient client = nh.serviceClient<move::ArmDisarmCommand>("arm_disarm");
+    req.cmd = false;
+    return client.call(req,res);
+}
 
 /**
  * @brief Takeoff method
@@ -73,8 +88,8 @@ bool Drone::land(){
  * @return position struct. x,y and z is the coordinates, and success is for service call succeded or not.
  */
 position Drone::takePositionInfo(){
+    move::Position::Request req;
     move::Position::Response res;
-    move::Position::Response req;
     ros::ServiceClient client = nh.serviceClient<move::Position>("position/position");
 
     bool success = client.call(req,res);
