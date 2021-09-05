@@ -12,7 +12,10 @@
 #include <move/Battery.h>
 #include <move/Position.h>
 #include <move/Camera.h>
+#include <move/ArmDisarmCommand.h>
+#include <move/State.h>
 
+#define TRY(__function__) for(int i = 0; (!__function__) && (i < 5) ;i++) {ros::Duration(1.0).sleep(); ROS_INFO("Trying Again");}
 
 // Holds the given command by the services provided
 // Then sends the commands to drone in the main function
@@ -108,9 +111,44 @@ bool service_get_camera_frame(
     }	
 }
 
+ros::ServiceClient arm_command;
+
+bool service_command_arm_disarm(move::ArmDisarmCommand::Request &req, move::ArmDisarmCommand::Response &res)
+{
+    /* CommandBool
+    bool value
+    ---
+    bool success
+    uint8 result
+    */
+    mavros_msgs::CommandBool srv;
+    srv.request.value = req.cmd;
+    if (arm_command.call(srv))
+    {
+        if(srv.response.success){
+            ROS_INFO("Vehicle %sarmed!", req.cmd ? "" : "dis");
+            return true;
+        }else{
+            ROS_WARN("Failed to %sarm!", req.cmd ? "" : "dis");
+        }
+    }else{
+        ROS_ERROR("Failed to call service arm!");
+    }
+    return false;
+}
+
+
 // This holds the current state of the drone
 // Connected, the flight mode etc.
 mavros_msgs::State current_state;
+
+bool service_get_state(move::State::Request &req,move::State::Response &res)
+{
+    res.onAir = current_state.armed && pose.pose.position.z > 0.1;
+    res.armed = current_state.armed;
+    res.flightMode = current_state.mode;
+}
+
 
 // Saves the state of the drone
 void state_tracker(const mavros_msgs::State::ConstPtr& _current_state){
@@ -166,7 +204,7 @@ int main(int argc, char **argv){
     // Service Clients
 
     // Changes arming status
-    ros::ServiceClient arm_command = nh.serviceClient<mavros_msgs::CommandBool>
+    arm_command = nh.serviceClient<mavros_msgs::CommandBool>
             ("mavros/cmd/arming");
     // Set flight mode
     ros::ServiceClient set_flight_mode = nh.serviceClient<mavros_msgs::SetMode>
@@ -197,6 +235,11 @@ int main(int argc, char **argv){
         &service_get_position
     );
 
+    ros::ServiceServer server_arm_disarm = nh.advertiseService(
+        "arm_disarm",
+        &service_command_arm_disarm
+    );
+
     //the setpoint publishing rate MUST be faster than 2Hz
     ros::Rate rate(20.0);
 
@@ -205,10 +248,6 @@ int main(int argc, char **argv){
         ros::spinOnce();
         rate.sleep();
     }
-
-    
-    
-
 
     //send a few setpoints before starting
     for(int i = 100; ros::ok() && i > 0; --i){ // The number of loops may be decreased probably.
@@ -221,6 +260,12 @@ int main(int argc, char **argv){
     mavros_msgs::SetMode set_mode;
     set_mode.request.custom_mode = "OFFBOARD";
     
+    //TRY(set_flight_mode.call(set_mode) && set_mode.response.mode_sent);
+    while(!(set_flight_mode.call(set_mode) && set_mode.response.mode_sent)){
+        ROS_WARN_STREAM("Offboard could not be enabled! Trying again..");
+    }
+    ROS_INFO_STREAM("Offboard enabled");
+
     // Used for sending arm command 
     mavros_msgs::CommandBool arm;
     arm.request.value = true;
@@ -228,9 +273,7 @@ int main(int argc, char **argv){
     ros::Time last_request_time = ros::Time::now();
     while(ros::ok()){
         if( (current_state.mode != "OFFBOARD") && (ros::Time::now()-last_request_time > ros::Duration(5.0)) ){
-            if( set_flight_mode.call(set_mode) && set_mode.response.mode_sent){
-                ROS_INFO_STREAM("Offboard enabled");
-            }
+            ROS_WARN_STREAM("Offboard mode disabled!");
             last_request_time = ros::Time::now();
         }
         else{

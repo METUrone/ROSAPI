@@ -1,12 +1,13 @@
-#ifndef _MOVE_HANDLER_HPP_
-#define _MOVE_HANDLER_HPP_
+#pragma once
 #include <ros/ros.h>
 
 #include <move/Position.h>
 #include <move/PositionCommand.h>
 #include <move/Battery.h>
 #include <move/Camera.h>
+#include <move/TkoffLandCommand.h>
 #include <move/ArmDisarmCommand.h>
+#include <move/State.h>
 
 typedef struct{
     std::vector<unsigned char> frame;
@@ -44,20 +45,21 @@ typedef struct{
  * It has basic functions, and is designed to send the commands, then give the control to you immediately. Meaning that you have full control of the drone.
  * 
  */
-class Drone{
+class Plane{
     public:
-        Drone(ros::NodeHandle _nh);
+        Plane(ros::NodeHandle _nh);
 
         position takePositionInfo();
         battery batteryStatus();
-        frame camera();
-
+        
         bool moveGlobal(position pos);
         bool moveRelative(position pos);
         bool takeoff(float z);
-        bool land();
-        bool arm(); //Absolutely should add this function
-        bool disarm(); //Absolutely should add this function
+        bool land(float z); // TODO: Could not land in simulation. Needs fixing.
+        move::State getState();
+        bool isArmed();
+        bool arm();
+        bool disarm();
 
     private:
         battery last_battery_status; // Stores the last known battery status, will be returned if there is a problem in service call. 
@@ -68,8 +70,3 @@ class Drone{
 
 
 };
-
-
-
-
-#endif
