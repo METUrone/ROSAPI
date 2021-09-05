@@ -8,6 +8,12 @@
 #include <move/Camera.h>
 #include <move/ArmDisarmCommand.h>
 
+#include <pigpio.h>
+
+#define PUMP_PIN 19
+#define MOTOR_PIN 12
+
+
 typedef struct{
     std::vector<unsigned char> frame;
     bool success;
@@ -47,7 +53,7 @@ typedef struct{
 class Drone{
     public:
         Drone(ros::NodeHandle _nh);
-
+        ~Drone();
         position takePositionInfo();
         battery batteryStatus();
         frame camera();
@@ -58,6 +64,8 @@ class Drone{
         bool land();
         bool arm(); //Absolutely should add this function
         bool disarm(); //Absolutely should add this function
+        bool pumpWrite(int state);
+        bool openCapsule();
 
     private:
         battery last_battery_status; // Stores the last known battery status, will be returned if there is a problem in service call. 

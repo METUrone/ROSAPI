@@ -10,6 +10,22 @@ Drone::Drone(ros::NodeHandle _nh){
     last_battery_status = {0,0,0,false};
     last_position_info = {0,0,0,false};
     flying_status = false;
+    if (gpioInitialise() < 0){
+        ROS_ERROR_STREAM("Could not initialize the GPIO");
+    }else{
+        gpioSetMode(PUMP_PIN,PI_OUTPUT);
+        gpioSetMode(MOTOR_PIN,PI_OUTPUT);
+
+        gpioPWM(PUMP_PIN,0);
+        gpioPWM(MOTOR_PIN,0);
+    }
+}
+
+Drone::~Drone(){
+    gpioPWM(PUMP_PIN,0);
+    gpioPWM(MOTOR_PIN,0);
+    
+    gpioTerminate();
 }
 
 bool Drone::arm(){
@@ -223,6 +239,16 @@ frame Drone::camera(){
         return last_frame;
     }
     
+}
+
+bool Drone::pumpWrite(int state){
+    gpioPWM(PUMP_PIN,state == 1 ? 255 : 0);
+}
+
+bool Drone::openCapsule(){
+    gpioPWM(MOTOR_PIN, 255);
+    ros::Duration(2.0).sleep();//TODO: use a non blocking method
+    gpioPWM(MOTOR_PIN, 0);
 }
 
 int main(int argc, char **argv){
