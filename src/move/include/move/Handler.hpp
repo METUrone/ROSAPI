@@ -7,10 +7,13 @@
 #include <move/Battery.h>
 #include <move/Camera.h>
 #include <move/ArmDisarmCommand.h>
+#include <move/TkoffLandCommand.h>
 
-#include <pigpio.h>
+#ifdef __arm__
+#include <wiringPi.h>
+#endif
 
-#define PUMP_PIN 19
+#define PUMP_PIN 24
 #define MOTOR_PIN 12
 
 

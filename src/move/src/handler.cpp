@@ -1,4 +1,8 @@
 #include "move/Handler.hpp"
+#include <geometry_msgs/PoseStamped.h>
+
+extern geometry_msgs::PoseStamped pose_command;
+
 
 /**
  * @brief Construct a new Drone::Drone object
@@ -10,22 +14,23 @@ Drone::Drone(ros::NodeHandle _nh){
     last_battery_status = {0,0,0,false};
     last_position_info = {0,0,0,false};
     flying_status = false;
-    if (gpioInitialise() < 0){
-        ROS_ERROR_STREAM("Could not initialize the GPIO");
-    }else{
-        gpioSetMode(PUMP_PIN,PI_OUTPUT);
-        gpioSetMode(MOTOR_PIN,PI_OUTPUT);
+    #ifdef __arm__
+    wiringPiSetupGpio();
+    pinMode(PUMP_PIN,OUTPUT);
+    pinMode(MOTOR_PIN,OUTPUT);
 
-        gpioPWM(PUMP_PIN,0);
-        gpioPWM(MOTOR_PIN,0);
-    }
+    digitalWrite(PUMP_PIN,LOW);
+    digitalWrite(MOTOR_PIN,LOW);
+    #endif
 }
 
 Drone::~Drone(){
-    gpioPWM(PUMP_PIN,0);
-    gpioPWM(MOTOR_PIN,0);
-    
-    gpioTerminate();
+    #ifdef __arm__
+    digitalWrite(PUMP_PIN,LOW);
+    digitalWrite(MOTOR_PIN,LOW);
+    #else
+
+    #endif
 }
 
 bool Drone::arm(){
@@ -43,59 +48,6 @@ bool Drone::disarm(){
     req.cmd = false;
     return client.call(req,res);
 }
-
-/**
- * @brief Takeoff method
- * This needs to be called for takeoff.
- * If already flying, it will give error.
- * 
- * @param z The height to takeoff, in meters.
- * @return true: If the vehicle is not flying at the time.
- * @return false: If the vehicle is flying already.
- */
-bool Drone::takeoff(float z){
-    if(flying_status == true){
-        ROS_ERROR_STREAM("takeoff called but already flying!");
-        return false;
-    }
-    else{
-        flying_status = true;
-        moveRelative({0,0,z,true});
-        // Here may need to sleep a while, then control if movement is done or still running.
-        // But for now I do not write such a thing
-        return true;
-    }
-}
-
-
-/**
- * @brief Lands the drone.
- * If takePositionInfo succeded, sends the commands to land. If not, it do not send command, and returns false.
- * Be careful that if there is a problem in landing, you have the full control to land. Watch the return.
- * If things go wrong, the last thing you may do is closing commander. The drone will land automatically.
- * 
- * 
- * @return true if command is sent successfully.
- * @return false if not already flying or command couldn't be sent successfully.
- */
-bool Drone::land(){
-    // In future, we may use landing flight mode to land, but not now. 
-    if(!flying_status){
-        return false;
-    }
-    position pos = takePositionInfo();
-    if(pos.success){
-        moveRelative({0,0,-pos.z,false});
-        // To do
-        // Here may sleep a while, then check if landing is correctly done or not.
-        flying_status = false;
-        return true;
-    }
-    else{
-        return false;
-    }
-}
-
 
 /**
  * @brief Returns the GPS position of the vehicle.
@@ -189,6 +141,63 @@ bool Drone::moveRelative(position pos){
     }
 }
 
+/**
+ * @brief Takeoff method
+ * This needs to be called for takeoff.
+ * If already flying, it will give error.
+ * 
+ * @param z The height to takeoff, in meters.
+ * @return true: If the vehicle is not flying at the time.
+ * @return false: If the vehicle is flying already.
+ */
+bool Drone::takeoff(float z){
+    move::TkoffLandCommand srv;
+    srv.request.cmd = true;
+    srv.request.altitude = z;
+    ros::ServiceClient client = nh.serviceClient<move::TkoffLandCommand>("move/cmd/tkoff_land");
+    if(!flying_status){
+        bool success = client.call(srv);
+        if(success){
+            flying_status = true;
+            ROS_INFO_STREAM("Takeoff call with success");
+            this->moveRelative({0,0,z,false});
+            //pose_command.pose.position.z = z;
+            return true;
+        }else{
+            ROS_ERROR_STREAM("Takeoff call with error");
+            
+        }
+    }
+    return false;
+}
+
+/**
+ * @brief Lands the drone.
+ * If takePositionInfo succeded, sends the commands to land. If not, it do not send command, and returns false.
+ * Be careful that if there is a problem in landing, you have the full control to land. Watch the return.
+ * If things go wrong, the last thing you may do is closing commander. The drone will land automatically.
+ * 
+ * 
+ * @return true if command is sent successfully.
+ * @return false if not already flying or command couldn't be sent successfully.
+ */
+bool Drone::land(){
+    move::TkoffLandCommand srv;
+    srv.request.cmd = false;
+    ros::ServiceClient client = nh.serviceClient<move::TkoffLandCommand>("move/cmd/tkoff_land");
+
+    if(flying_status){
+        bool success = client.call(srv);
+        if(success){
+            flying_status = false;
+            ROS_INFO_STREAM("Land call with success");
+            return true;
+        }else{
+            ROS_ERROR_STREAM("Land call with error");
+            return false;
+        }
+    }
+}
 
 /**
  * @brief Returns the battery's status
@@ -242,23 +251,43 @@ frame Drone::camera(){
 }
 
 bool Drone::pumpWrite(int state){
-    gpioPWM(PUMP_PIN,state == 1 ? 255 : 0);
+    #ifdef __arm__
+    digitalWrite(PUMP_PIN,state == 1 ? HIGH : LOW);
+    #endif
 }
 
 bool Drone::openCapsule(){
-    gpioPWM(MOTOR_PIN, 255);
+    #ifdef __arm__
+    digitalWrite(MOTOR_PIN, HIGH);
     ros::Duration(2.0).sleep();//TODO: use a non blocking method
-    gpioPWM(MOTOR_PIN, 0);
+    digitalWrite(MOTOR_PIN, LOW);
+    #endif
 }
+    //drone.moveRelative({0,0,10,false});
 
 int main(int argc, char **argv){
     ros::init(argc, argv, "handler");
     ros::NodeHandle nh;
     ros::Rate rate(0.2);
+
+    position pos = {-10,-30,10,false};
+
     Drone drone = Drone(nh);
-    drone.takeoff(5);
+    ROS_INFO("Takeoff");
+    drone.disarm();
+    drone.arm();
+    ros::Duration(5.0).sleep();
+    drone.takeoff(10);
+    ros::Duration(20.0).sleep();
+    ROS_INFO("Goin");
+    drone.moveRelative(pos);
+    ros::Duration(30.0).sleep();
+    ROS_INFO("Landin");
+    drone.land();
+
     while(ros::ok()){
-        position pos = {0,0,5,false};
+
+        ros::spinOnce();
         rate.sleep();
     }
 }

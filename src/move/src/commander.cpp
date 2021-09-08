@@ -1,21 +1,27 @@
 #include <ros/ros.h>
 
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Twist.h>
 #include <mavros_msgs/CommandBool.h>
+#include <mavros_msgs/CommandTOL.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
 #include <sensor_msgs/BatteryState.h>
 #include <sensor_msgs/Image.h>
+#include <nav_msgs/Odometry.h>
 
 #include <move/PositionCommand.h>
 #include <move/Battery.h>
 #include <move/Position.h>
 #include <move/Camera.h>
 #include <move/ArmDisarmCommand.h>
+#include <move/TkoffLandCommand.h>
 #include <move/State.h>
 
 #define TRY(__function__) for(int i = 0; (!__function__) && (i < 5) ;i++) {ros::Duration(1.0).sleep(); ROS_INFO("Trying Again");}
+
+#define GCS_MODE "GUIDED" // "OFFBOARD" for PX4 | "GUIDED" for ARDUPILOT
 
 // Holds the given command by the services provided
 // Then sends the commands to drone in the main function
@@ -24,6 +30,7 @@ geometry_msgs::PoseStamped pose_command;
 
 // Holds the pose of the drone
 geometry_msgs::PoseStamped pose;
+bool poseRecieved = false;
 
 // Responses the position of the drone, x,y,z when the service is called.
 bool service_get_position(
@@ -113,6 +120,12 @@ bool service_get_camera_frame(
 
 ros::ServiceClient arm_command;
 
+ros::ServiceClient tkoff_command;
+
+ros::ServiceClient land_command;
+
+bool arm_request_state;
+
 bool service_command_arm_disarm(move::ArmDisarmCommand::Request &req, move::ArmDisarmCommand::Response &res)
 {
     /* CommandBool
@@ -121,6 +134,7 @@ bool service_command_arm_disarm(move::ArmDisarmCommand::Request &req, move::ArmD
     bool success
     uint8 result
     */
+    
     mavros_msgs::CommandBool srv;
     srv.request.value = req.cmd;
     if (arm_command.call(srv))
@@ -135,8 +149,53 @@ bool service_command_arm_disarm(move::ArmDisarmCommand::Request &req, move::ArmD
         ROS_ERROR("Failed to call service arm!");
     }
     return false;
+    
+    arm_request_state = req.cmd;
 }
 
+bool service_command_tkoff_land(move::TkoffLandCommand::Request &req, move::TkoffLandCommand::Response &res)
+{
+    /* CommandTOL
+    float32 min_pitch # used by takeoff
+    float32 yaw
+    float32 latitude
+    float32 longitude
+    float32 altitude
+    ---
+    bool success
+    uint8 result
+    */
+    
+    mavros_msgs::CommandTOL srv;
+    if(req.cmd){
+        srv.request.altitude = req.altitude;
+        if (tkoff_command.call(srv))
+        {
+            if(srv.response.success){
+                ROS_INFO("Vehicle taking off!");
+                return true;
+            }else{
+                ROS_WARN("Failed to takeoff!");
+            }
+        }else{
+            ROS_ERROR("Failed to call service takeoff!");
+        }
+    }else{
+        if (land_command.call(srv))
+        {
+            if(srv.response.success){
+                ROS_INFO("Vehicle landing!");
+                return true;
+            }else{
+                ROS_WARN("Failed to land!");
+            }
+        }else{
+            ROS_ERROR("Failed to call service land!");
+        }
+    }
+    return false;
+    
+}
 
 // This holds the current state of the drone
 // Connected, the flight mode etc.
@@ -167,8 +226,9 @@ void frame_save(const sensor_msgs::Image &_frame){
 }
 
 // Saves the pose of the drone
-void pose_tracker(const geometry_msgs::PoseStamped::ConstPtr& _pose){
-    pose = *_pose;
+void pose_tracker(const nav_msgs::Odometry::ConstPtr& _odometry){
+    pose.pose = _odometry->pose.pose;
+    poseRecieved = true;
 }
 
 
@@ -192,8 +252,8 @@ int main(int argc, char **argv){
     ros::Subscriber battery_status = nh.subscribe<sensor_msgs::BatteryState>
             ("mavros/battery",10, battery_tracker);
     // Current pose of the drone
-    ros::Subscriber position = nh.subscribe<geometry_msgs::PoseStamped>
-            ("mavros/local_position/pose",10, pose_tracker);
+    ros::Subscriber position = nh.subscribe<nav_msgs::Odometry>
+            ("mavros/global_position/local",10, pose_tracker);
 
     // Advertised topics
 
@@ -206,6 +266,12 @@ int main(int argc, char **argv){
     // Changes arming status
     arm_command = nh.serviceClient<mavros_msgs::CommandBool>
             ("mavros/cmd/arming");
+    
+    tkoff_command = nh.serviceClient<mavros_msgs::CommandTOL>
+            ("mavros/cmd/takeoff");
+
+    land_command = nh.serviceClient<mavros_msgs::CommandTOL>
+            ("mavros/cmd/land");
     // Set flight mode
     ros::ServiceClient set_flight_mode = nh.serviceClient<mavros_msgs::SetMode>
             ("mavros/set_mode");
@@ -240,14 +306,26 @@ int main(int argc, char **argv){
         &service_command_arm_disarm
     );
 
+    ros::ServiceServer server_tkoff_land = nh.advertiseService(
+        "move/cmd/tkoff_land",
+        &service_command_tkoff_land
+    );
+
     //the setpoint publishing rate MUST be faster than 2Hz
-    ros::Rate rate(20.0);
+    ros::Rate rate(20);
 
     // wait for FCU connection
     while(ros::ok() && !current_state.connected){
         ros::spinOnce();
         rate.sleep();
     }
+
+    // wait for the first pose data from mavros topic
+    while(ros::ok() && !poseRecieved){
+        ros::spinOnce();
+        rate.sleep();
+    }
+    pose_command = pose;// Reset to the current pose
 
     //send a few setpoints before starting
     for(int i = 100; ros::ok() && i > 0; --i){ // The number of loops may be decreased probably.
@@ -258,36 +336,38 @@ int main(int argc, char **argv){
 
     // Used for setting the flight mode
     mavros_msgs::SetMode set_mode;
-    set_mode.request.custom_mode = "OFFBOARD";
+    set_mode.request.custom_mode = GCS_MODE;
     
     //TRY(set_flight_mode.call(set_mode) && set_mode.response.mode_sent);
     while(!(set_flight_mode.call(set_mode) && set_mode.response.mode_sent)){
-        ROS_WARN_STREAM("Offboard could not be enabled! Trying again..");
+        ROS_WARN("%s could not be enabled! Trying again..",GCS_MODE);
     }
-    ROS_INFO_STREAM("Offboard enabled");
+    ROS_INFO("%s mode enabled",GCS_MODE);
 
     // Used for sending arm command 
     mavros_msgs::CommandBool arm;
     arm.request.value = true;
-
+    rate = ros::Rate(20);
     ros::Time last_request_time = ros::Time::now();
     while(ros::ok()){
-        if( (current_state.mode != "OFFBOARD") && (ros::Time::now()-last_request_time > ros::Duration(5.0)) ){
-            ROS_WARN_STREAM("Offboard mode disabled!");
-            last_request_time = ros::Time::now();
-        }
-        else{
-            if( !current_state.armed && (ros::Time::now() - last_request_time > ros::Duration(5.0)) ){
+        if(current_state.mode != GCS_MODE){
+            if (ros::Time::now()-last_request_time > ros::Duration(5.0)){
+                ROS_WARN("%s mode disabled!",GCS_MODE);
+                last_request_time = ros::Time::now();
+            }
+        }else{
+            //Here we are constantly publishing the position.
+		    relative_position_command_publisher.publish(pose_command);
+            ROS_INFO("%.2f %.2f %.2f",pose_command.pose.position.x,pose_command.pose.position.y,pose_command.pose.position.z);
+
+            if( !current_state.armed && arm_request_state && (ros::Time::now() - last_request_time > ros::Duration(5.0)) ){
                 if( arm_command.call(arm) && arm.response.success){
-                    ROS_INFO_STREAM("Vehicle armed");
+                    ROS_INFO_STREAM("Vehicle armed automaticly");
                 }
                 last_request_time = ros::Time::now();
             }
         }
-
-        //Here we are constantly publishing the position.
-		relative_position_command_publisher.publish(pose_command);
-        //ROS_INFO_STREAM(pose_command.pose.position.z);
+        
     
         ros::spinOnce();
         rate.sleep();
