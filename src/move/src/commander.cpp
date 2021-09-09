@@ -3,6 +3,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/Quaternion.h>
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/CommandTOL.h>
 #include <mavros_msgs/SetMode.h>
@@ -28,60 +29,33 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 
-#define PI 3.14159265
-
 #define TRY(__function__) for(int i = 0; (!__function__) && (i < 5) ;i++) {ros::Duration(1.0).sleep(); ROS_INFO("Trying Again");}
 
 #define GCS_MODE "GUIDED" // "OFFBOARD" for PX4 | "GUIDED" for ARDUPILOT
+#define OFFSET_ANGLE yaw_angle // yaw_angle for auto heading angle offset set at arming // in radians
 
-struct Quaternion {
-    double w, x, y, z;
-};
+double yaw_angle;
 
-struct EulerAngles {
-    double roll, pitch, yaw;
-};
-
-Quaternion q;
-EulerAngles e;
-float yaw_angle;
-double rotation_matrix[2][2];
-
-EulerAngles ToEulerAngles(Quaternion q) {
-    EulerAngles angles;
-
-    // roll (x-axis rotation)
-    double sinr_cosp = 2 * (q.w * q.x + q.y * q.z);
-    double cosr_cosp = 1 - 2 * (q.x * q.x + q.y * q.y);
-    angles.roll = std::atan2(sinr_cosp, cosr_cosp);
-
-    // pitch (y-axis rotation)
-    double sinp = 2 * (q.w * q.y - q.z * q.x);
-    if (std::abs(sinp) >= 1)
-        angles.pitch = std::copysign(M_PI / 2, sinp); // use 90 degrees if out of range
-    else
-        angles.pitch = std::asin(sinp);
-
+double QuaternionToYaw(geometry_msgs::Quaternion& q) {
     // yaw (z-axis rotation)
     double siny_cosp = 2 * (q.w * q.z + q.x * q.y);
     double cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
-    angles.yaw = std::atan2(siny_cosp, cosy_cosp);
-    return angles;
+    double yaw = std::atan2(siny_cosp, cosy_cosp);
+    return yaw;
 }
 
 // Function for converting radian to degree
 double Convert(double radian)
 {
-    double pi = 3.14159;
-    return(radian * (180 / pi));
+    return(radian * (180 / M_PI));
 }
 
-geometry_msgs::PoseStamped calculate_pose(geometry_msgs::PoseStamped pose, double rotation_matrix[2][2]){
-    geometry_msgs::PoseStamped result;
-    result.pose.position.x = pose.pose.position.x*rotation_matrix[0][0] + pose.pose.position.y*rotation_matrix[1][0];
-    result.pose.position.y = pose.pose.position.x*rotation_matrix[0][1] + pose.pose.position.y*rotation_matrix[1][1];
-    result.pose.position.z = pose.pose.position.z;
-    return result;
+geometry_msgs::PoseStamped rotate(geometry_msgs::PoseStamped& _pose, double _yaw){
+    geometry_msgs::PoseStamped res;
+    res.pose.position.x = _pose.pose.position.x*std::cos(_yaw) - _pose.pose.position.y*std::sin(_yaw);
+    res.pose.position.y = _pose.pose.position.x*std::sin(_yaw) + _pose.pose.position.y*std::cos(_yaw);
+    res.pose.position.z = _pose.pose.position.z;
+    return res;
 }
 
 // Holds the given command by the services provided
@@ -105,6 +79,7 @@ bool service_get_position(
     return true;
 }
 
+ros::Publisher relative_position_command_publisher;
 // When the service called,
 // the requested x,y,z and t is put to the pose_command.
 bool service_command_global_position(
@@ -117,6 +92,8 @@ bool service_command_global_position(
     pose_command.pose.position.y = req.y;
     pose_command.pose.position.z = req.z;
 
+    relative_position_command_publisher.publish(rotate(pose_command,OFFSET_ANGLE)); // calculates position according to the drone's body frame instead of NED
+    ROS_INFO("%.2f %.2f %.2f",pose_command.pose.position.x,pose_command.pose.position.y,pose_command.pose.position.z);
     return true;
 }
 
@@ -132,6 +109,8 @@ bool service_command_relative_position(
     pose_command.pose.position.y += req.y;
     pose_command.pose.position.z += req.z;
 
+    relative_position_command_publisher.publish(rotate(pose_command,OFFSET_ANGLE)); // calculates position according to the drone's body frame instead of NED
+    ROS_INFO("%.2f %.2f %.2f",pose_command.pose.position.x,pose_command.pose.position.y,pose_command.pose.position.z);
     return true;
 }
 
@@ -201,17 +180,9 @@ bool service_command_arm_disarm(move::ArmDisarmCommand::Request &req, move::ArmD
     if (arm_command.call(srv))
     {
         if(srv.response.success){
-            q.x = pose.pose.orientation.x;
-            q.y = pose.pose.orientation.y;
-            q.z = pose.pose.orientation.z;
-            q.w = pose.pose.orientation.w; 
-            e = ToEulerAngles(q);
-            yaw_angle = Convert(e.yaw);
-            ROS_INFO("YAW ANGLE: %.2f", yaw_angle);
-		    rotation_matrix[0][0] = cos(PI*yaw_angle/180);
-            rotation_matrix[0][1] = sin(PI*yaw_angle/180);
-            rotation_matrix[1][0] =-sin(PI*yaw_angle/180);
-            rotation_matrix[0][1] = cos(PI*yaw_angle/180);
+            yaw_angle = QuaternionToYaw(pose.pose.orientation);
+            ROS_INFO("YAW ANGLE: %.2f", Convert(yaw_angle));
+
             ROS_INFO("Vehicle %sarmed!", req.cmd ? "" : "dis");
             return true;
         }else{
@@ -330,7 +301,7 @@ int main(int argc, char **argv){
     // Advertised topics
 
     // Used for giving commands to drone.
-    ros::Publisher relative_position_command_publisher = nh.advertise<geometry_msgs::PoseStamped>
+    relative_position_command_publisher = nh.advertise<geometry_msgs::PoseStamped>
             ("mavros/setpoint_position/local", 10);
 
     // Service Clients
@@ -399,16 +370,8 @@ int main(int argc, char **argv){
     }
     pose_command = pose;// Reset to the current pose
 
-    ros::Duration(2.0).sleep();
-
-    q.x = pose.pose.orientation.x;
-    q.y = pose.pose.orientation.y;
-    q.z = pose.pose.orientation.z;
-    q.w = pose.pose.orientation.w; 
-    e = ToEulerAngles(q);
-    yaw_angle = Convert(e.yaw);
-
-    ROS_INFO("YAW ANGLE: %.2f", yaw_angle);
+    yaw_angle = QuaternionToYaw(pose.pose.orientation);
+    ROS_INFO("YAW ANGLE: %.2f", Convert(yaw_angle));
 
     //send a few setpoints before starting
     for(int i = 100; ros::ok() && i > 0; --i){ // The number of loops may be decreased probably.
@@ -440,8 +403,8 @@ int main(int argc, char **argv){
             }
         }else{
             //Here we are constantly publishing the position.
-		    relative_position_command_publisher.publish(calculate_pose(pose_command, rotation_matrix)); // calculates position according to the drone's body frame instead of NED
-            ROS_INFO("%.2f %.2f %.2f",pose_command.pose.position.x,pose_command.pose.position.y,pose_command.pose.position.z);
+		    //relative_position_command_publisher.publish(calculate_pose(pose_command, rotation_matrix)); // calculates position according to the drone's body frame instead of NED
+            //ROS_INFO("%.2f %.2f %.2f",pose_command.pose.position.x,pose_command.pose.position.y,pose_command.pose.position.z);
 
             if( !current_state.armed && arm_request_state && (ros::Time::now() - last_request_time > ros::Duration(5.0)) ){
                 if( arm_command.call(arm) && arm.response.success){

@@ -1,8 +1,4 @@
 #include "move/Handler.hpp"
-#include <geometry_msgs/PoseStamped.h>
-
-extern geometry_msgs::PoseStamped pose_command;
-
 
 /**
  * @brief Construct a new Drone::Drone object
@@ -270,7 +266,7 @@ int main(int argc, char **argv){
     ros::NodeHandle nh;
     ros::Rate rate(0.2);
 
-    position pos = {-10,-30,10,false};
+    position pos = {10,30,0,false};
 
     Drone drone = Drone(nh);
     ROS_INFO("Takeoff");
@@ -281,7 +277,7 @@ int main(int argc, char **argv){
     ros::Duration(20.0).sleep();
     ROS_INFO("Goin");
     drone.moveRelative(pos);
-    ros::Duration(30.0).sleep();
+    ros::Duration(20.0).sleep();
     ROS_INFO("Landin");
     drone.land();
 
