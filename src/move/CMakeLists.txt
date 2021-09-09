@@ -13,6 +13,7 @@ add_service_files(
     Battery.srv
     Position.srv
     Camera.srv
+    Mesafe.srv
 )
 
 # add_message_files(
@@ -31,7 +32,6 @@ catkin_package(
 
 
 include_directories(include ${catkin_INCLUDE_DIRS})
-include_directories(include ${pigpio_INCLUDE_DIR})
 
 EXECUTE_PROCESS( COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE )
 
