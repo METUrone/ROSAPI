@@ -91,9 +91,10 @@ bool service_get_position(
     move::Position::Request &req,
     move::Position::Response &res
 ) {
-    res.x = pose.pose.position.x;
-    res.y = pose.pose.position.y;
-    res.z = pose.pose.position.z;
+    geometry_msgs::PoseStamped rotated_pose = rotate(pose,-OFFSET_ANGLE);
+    res.x = rotated_pose.pose.position.x;
+    res.y = rotated_pose.pose.position.y;
+    res.z = rotated_pose.pose.position.z;
     
     return true;
 }

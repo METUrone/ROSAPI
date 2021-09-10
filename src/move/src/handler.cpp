@@ -58,13 +58,13 @@ position Drone::takePositionInfo(){
 
     bool success = client.call(req,res);
     if(success){
-        ROS_INFO_STREAM("TakePositionInfo call with success");
+        ROS_INFO("TakePositionInfo call with success");
         position response = {res.x, res.y, res.z, true};
         last_position_info = {res.x, res.y ,res.z ,false};
         return response;
     }
     else{
-        ROS_INFO_STREAM("TakePositionInfo call with error");
+        ROS_INFO("TakePositionInfo call with error");
         return last_position_info;
     }
 }
@@ -94,11 +94,11 @@ bool Drone::moveGlobal(position pos){
 
     bool success = client.call(req,res);
     if(success){
-        ROS_INFO_STREAM("moveGlobal call with success");
+        ROS_INFO("moveGlobal call with success");
         return true;
     }
     else{
-        ROS_INFO_STREAM("moveGlobal call with error");
+        ROS_INFO("moveGlobal call with error");
         return false;
     }
 }
@@ -128,11 +128,11 @@ bool Drone::moveRelative(position pos){
 
     bool success = client.call(req,res);
     if(success){
-        ROS_INFO_STREAM("moveRelative call with success");
+        ROS_INFO("moveRelative call with success");
         return true;
     }
     else{
-        ROS_INFO_STREAM("moveRelative call with error");
+        ROS_INFO("moveRelative call with error");
         return false;
     }
 }
@@ -155,7 +155,7 @@ bool Drone::takeoff(float z){
         bool success = client.call(srv);
         if(success){
             flying_status = true;
-            ROS_INFO_STREAM("Takeoff call with success");
+            ROS_INFO("Takeoff call with success");
             this->moveRelative({0,0,z,false});
             //pose_command.pose.position.z = z;
             return true;
@@ -186,7 +186,7 @@ bool Drone::land(){
         bool success = client.call(srv);
         if(success){
             flying_status = false;
-            ROS_INFO_STREAM("Land call with success");
+            ROS_INFO("Land call with success");
             return true;
         }else{
             ROS_ERROR_STREAM("Land call with error");
@@ -210,13 +210,13 @@ battery Drone::batteryStatus(){
     bool success = client.call(req,res);
 
     if(success){
-        ROS_INFO_STREAM("batteryStatus call with success");
+        ROS_INFO("batteryStatus call with success");
         battery response = {res.voltage, res.current, res.remaining, true};
         last_battery_status = {res.voltage, res.current, res.remaining, false};
         return response;
     }
     else{
-        ROS_INFO_STREAM("batteryStatus call with error");
+        ROS_INFO("batteryStatus call with error");
         return last_battery_status;
     }
 }
@@ -280,9 +280,10 @@ bool Drone::wherePool(double& _posx, double& _posy, double& _posx2, double& _pos
     }
     return false;
 }
-
-int main(int argc, char **argv){
-    ros::init(argc, argv, "handler");
+void mission1() {
+    // ################################
+    // # CODE FOR MISSION 1 GOES HERE #
+    // ################################
     ros::NodeHandle nh;
     ros::Rate rate(0.2);
 
@@ -293,6 +294,340 @@ int main(int argc, char **argv){
     drone.disarm();
     drone.arm();
     ros::Duration(5.0).sleep();
+    ros::Rate little_sleep(5);
+    int height = 10;
+    drone.takeoff(height);
+	while(1) {
+        ROS_INFO(" x:%f | y: %f | z:%f", drone.takePositionInfo().x, drone.takePositionInfo().y, drone.takePositionInfo().z);
+         if ((drone.takePositionInfo().z >= height-1) && (drone.takePositionInfo().z <= height+1)) {
+            break;
+         }
+         little_sleep.sleep();
+         continue;
+      }
+	//circle_polar(drone, {-9,0,0,0}, 128, 4);
+    //ros::Duration(2.0).sleep();
+    //do_task1();
+    ROS_INFO("doing start");
+    int right_size = 5;
+      drone.moveRelative({right_size,0,0,true});
+      while(1) {
+          ROS_INFO(" x:%f | y: %f | z:%f", drone.takePositionInfo().x, drone.takePositionInfo().y, drone.takePositionInfo().z);
+         if ((drone.takePositionInfo().x >= right_size-0.5) && (drone.takePositionInfo().x <= right_size+0.5)) {
+            break;
+         }
+         little_sleep.sleep();
+         continue;
+      }
+	ROS_INFO("move 1 complete!!");
+      //ros::Duration(3.0).sleep();
+      int upper_size = 3;
+      drone.moveRelative({1,-upper_size,0,true});
+      while(1) {
+          ROS_INFO(" x:%f | y: %f | z:%f", drone.takePositionInfo().x, drone.takePositionInfo().y, drone.takePositionInfo().z);
+         if ((drone.takePositionInfo().y >= -upper_size-1) && (drone.takePositionInfo().y <= -upper_size+1)) {
+            break;
+         }
+         little_sleep.sleep();
+         continue;
+      }
+      ROS_INFO("move 2 complete!!");
+      //ros::Duration(3.0).sleep();
+      drone.moveRelative({-1,-upper_size,0,true});
+      while(1) {
+          ROS_INFO(" x:%f | y: %f | z:%f", drone.takePositionInfo().x, drone.takePositionInfo().y, drone.takePositionInfo().z);
+         if ((drone.takePositionInfo().y >= ((-2*upper_size)-1)) && (drone.takePositionInfo().y <= ((-2*upper_size)+1))) {
+            break;
+         }
+         little_sleep.sleep();
+         continue;
+      }
+      //ros::Duration(3.0).sleep();
+      drone.moveRelative({-right_size,0,0,true});
+      ROS_INFO("move 3 complete!!");
+      while(1) {
+          ROS_INFO(" x:%f | y: %f | z:%f", drone.takePositionInfo().x, drone.takePositionInfo().y, drone.takePositionInfo().z);
+         if ((drone.takePositionInfo().x >= -0.6) && (drone.takePositionInfo().x <= 0.6)) {
+            break;
+         }
+         little_sleep.sleep();
+         continue;
+      }
+      //ros::Duration(3.0).sleep();
+      drone.moveRelative({-1,-2,0,true});
+      ROS_INFO("move 4 complete!!");
+      while(1) {
+          ROS_INFO(" x:%f | y: %f | z:%f", drone.takePositionInfo().x, drone.takePositionInfo().y, drone.takePositionInfo().z);
+         if ((drone.takePositionInfo().y >= -9) && (drone.takePositionInfo().y <= -7)) {
+            break;
+         }
+         little_sleep.sleep();
+         continue;
+      }
+      //ros::Duration(3.0).sleep();
+      drone.moveRelative({2,0,0,true});
+      ROS_INFO("move 5 complete!!");
+      while(1) {
+          ROS_INFO(" x:%f | y: %f | z:%f", drone.takePositionInfo().x, drone.takePositionInfo().y, drone.takePositionInfo().z);
+         if ((drone.takePositionInfo().x >= 0.5) && (drone.takePositionInfo().x <= 1.5)) {
+            break;
+         }
+         little_sleep.sleep();
+         continue;
+      }
+      //ros::Duration(3.0).sleep();
+      drone.moveRelative({-1,2,0,true});
+      ROS_INFO("move 6 complete!!");
+      while(1) {
+          ROS_INFO(" x:%f | y: %f | z:%f", drone.takePositionInfo().x, drone.takePositionInfo().y, drone.takePositionInfo().z);
+         if ((drone.takePositionInfo().x >= -0.5) && (drone.takePositionInfo().x <= 0.5)) {
+            break;
+         }
+         little_sleep.sleep();
+         continue;
+      }
+      //ros::Duration(3.0).sleep();
+      drone.moveRelative({-5,0,0,true});
+      ROS_INFO("move 7 complete!!");
+      while(1) {
+          ROS_INFO(" x:%f | y: %f | z:%f", drone.takePositionInfo().x, drone.takePositionInfo().y, drone.takePositionInfo().z);
+         if ((drone.takePositionInfo().x >= -6) && (drone.takePositionInfo().x <= -4)) {
+            break;
+         }
+         little_sleep.sleep();
+         continue;
+      }
+      //ros::Duration(3.0).sleep();
+      drone.moveRelative({-1,3,0,true});
+      ROS_INFO("move 8 complete!!");
+      while(1) {
+          ROS_INFO(" x:%f | y: %f | z:%f", drone.takePositionInfo().x, drone.takePositionInfo().y, drone.takePositionInfo().z);
+         if ((drone.takePositionInfo().y >= -3.5) && (drone.takePositionInfo().y <= -2.5)) {
+            break;
+         }
+         little_sleep.sleep();
+         continue;
+      }
+      //ros::Duration(3.0).sleep();
+      drone.moveRelative({1,3,0,true});
+      ROS_INFO("move 9 complete!!");
+      while(1) {
+          ROS_INFO(" x:%f | y: %f | z:%f", drone.takePositionInfo().x, drone.takePositionInfo().y, drone.takePositionInfo().z);
+         if ((drone.takePositionInfo().y >= -0.5) && (drone.takePositionInfo().y <= 0.5)) {
+            break;
+         }
+         little_sleep.sleep();
+         continue;
+      }
+      //ros::Duration(3.0).sleep();
+      drone.moveRelative({5,0,0,true});
+      ROS_INFO("To origin we go !!");
+      while(1) {
+          ROS_INFO(" x:%f | y: %f | z:%f", drone.takePositionInfo().x, drone.takePositionInfo().y, drone.takePositionInfo().z);
+         if ((drone.takePositionInfo().x >= -1) && (drone.takePositionInfo().x <= 1)) {
+            break;
+         }
+         little_sleep.sleep();
+         continue;
+      }
+
+    drone.land();
+    ros::Duration(3.0).sleep();
+}
+
+void mission2() {
+    // ################################
+    // # CODE FOR MISSION 2 GOES HERE #
+    // ################################
+    ros::NodeHandle nh;
+    ros::Rate rate(0.2);
+
+    position pos = {10,30,0,false};
+
+    Drone drone = Drone(nh);
+    ROS_INFO("Takeoff");
+    drone.disarm();
+    drone.arm();
+    ros::Duration(5.0).sleep();
+    drone.takeoff(15);
+    
+    float x_location_of_water_grab = 35; //This information will later be obtained by computer vision.
+    float y_location_of_water_grab = -25; //This information will later be obtained by computer vision.
+    float x_location_of_water_drop = 15; //This information will later be obtained by computer vision.
+    float y_location_of_water_drop = -25; //This information will later be obtained by computer vision.
+    
+    while(1) {
+         if ((drone.takePositionInfo().z >= 14.5) && (drone.takePositionInfo().z <= 16)) {
+            break;
+         }
+         continue;
+      }
+    ROS_INFO("doing start");
+      
+	ROS_INFO("Go forward! ! !");
+
+      drone.moveRelative({40,0,0,true}); // Aslında 50 değil 40 
+      while(1) {
+         if ((drone.takePositionInfo().x >= 37.5) && (drone.takePositionInfo().x <= 42.5)) {
+            break;
+         }
+         continue;
+      }
+	ROS_INFO("move 1 complete!!");
+      //ros::Duration(3.0).sleep();
+      drone.moveRelative({5,-15,0,true}); //Aslında 18 değil 15
+      while(1) {
+         if ((drone.takePositionInfo().y >= -16) && (drone.takePositionInfo().y <= -14)) {
+            break;
+         }
+         continue;
+      }
+      ROS_INFO("move 2 complete!!");
+      //ros::Duration(3.0).sleep();
+      drone.moveRelative({-5,-15,0,true}); //Aslında 18 değil 15
+      while(1) {
+         if ((drone.takePositionInfo().y >= -31) && (drone.takePositionInfo().y <= -29)) {
+            break;
+         }
+         continue;
+      }
+    drone.moveRelative({-80,0,0,true}); // 100 değil 80
+     while(1) {
+         if ((drone.takePositionInfo().x >= -44) && (drone.takePositionInfo().x <= -36)) {
+            break;
+         }
+         continue;
+      }
+    
+ROS_INFO("turning (old problem spot)!!");
+    drone.moveRelative({-5,15,0,true}); // 18 değil 15
+      
+      while(1) {
+         if ((drone.takePositionInfo().y >= -17) && (drone.takePositionInfo().y <= -13)) {
+            break;
+         }
+         continue;
+      }
+      ROS_INFO("turning!!");
+      drone.moveRelative({5,15,0,true}); // 18 değil 15
+      
+      while(1) {
+         if ((drone.takePositionInfo().y >= -1) && (drone.takePositionInfo().y <= 1)) {
+            break;
+         }
+         continue;
+      }
+    ROS_INFO("moving!!");
+    drone.moveRelative({80,-10,0,true}); // 100 değil 80
+    while(1) {
+         if ((drone.takePositionInfo().x >= 39) && (drone.takePositionInfo().x <= 40.5)) {
+            break;
+         }
+         continue;
+      }
+    ROS_INFO("turning again!!");
+      //ros::Duration(3.0).sleep();
+      drone.moveRelative({5,-5,0,true}); // 7 değil 5
+      while(1) {
+         if ((drone.takePositionInfo().x >= 44) && (drone.takePositionInfo().x <= 46)) {
+            break;
+         }
+         continue;
+      }
+      ROS_INFO("turning!!");
+      //ros::Duration(3.0).sleep();
+      drone.moveRelative({-5,-5,0,true}); // 7 değil 5
+      while(1) {
+         if ((drone.takePositionInfo().y >= -21) && (drone.takePositionInfo().y <= -19)) {
+            break;
+         }
+         continue;
+      }
+    drone.moveRelative({x_location_of_water_grab-40,y_location_of_water_grab+20,-12,true});
+    while(1) {
+         if ((drone.takePositionInfo().x >= x_location_of_water_grab-1) && (drone.takePositionInfo().x <= x_location_of_water_grab+1) && (drone.takePositionInfo().z >= 2) && (drone.takePositionInfo().z <= 4)) {
+            break;
+         }
+         continue;
+      }
+    ROS_INFO("Grabbing water");
+    drone.moveRelative({0,0,12,true});
+    while(1) {
+         if ((drone.takePositionInfo().z >= 14.5) && (drone.takePositionInfo().z <= 16)) {
+            break;
+         }
+         continue;
+      }
+    ROS_INFO("Let us bomb now.");
+    drone.moveRelative({x_location_of_water_drop - x_location_of_water_grab,y_location_of_water_drop-y_location_of_water_grab,-12,true});
+    while(1) {
+         if ((drone.takePositionInfo().x >= x_location_of_water_drop-1) && (drone.takePositionInfo().x <= x_location_of_water_drop+1) && (drone.takePositionInfo().z >= 2) && (drone.takePositionInfo().z <= 4)) {
+            break;
+         }
+         continue;
+      }
+    ROS_INFO("Found the drop zone");
+    
+    ROS_INFO("Sending the bomb");
+    
+    ROS_INFO("Let us continue");
+    drone.moveRelative({-40-x_location_of_water_drop,-20-y_location_of_water_drop,12,true});
+    while(1) {
+	if ((drone.takePositionInfo().x >= -42) && (drone.takePositionInfo().x <= -38)) {
+		break;	
+	}
+	continue;	
+	}
+    ROS_INFO("turning!!");
+    drone.moveRelative({-5,5,0,true}); // 7 değil 5
+      
+      while(1) {
+         if ((drone.takePositionInfo().y >= -16) && (drone.takePositionInfo().y <= -13.5)) {
+            break;
+         }
+         continue;
+      }
+      ROS_INFO("turning!!");
+      drone.moveRelative({5,5,0,true}); // 7 değil 5
+      
+      while(1) {
+         if ((drone.takePositionInfo().y >= -12) && (drone.takePositionInfo().y <= -8)) {
+            break;
+         }
+         continue;
+      }
+    drone.moveRelative({40,10,0,true}); //
+      
+      while(1) {
+         if ((drone.takePositionInfo().x >= -1) && (drone.takePositionInfo().x <= 5)) {
+            break;
+         }
+         continue;
+      }
+ROS_INFO("Finally landed.!!");
+    drone.land();
+while(1) {
+         if ((drone.takePositionInfo().z >= -1) && (drone.takePositionInfo().z <= 0.5)) {
+            break;
+         }
+         continue;
+      }
+
+    ros::Duration(3.0).sleep();
+
+}
+
+int main(int argc, char **argv){
+    ros::init(argc, argv, "handler");
+    
+    
+    //MISSION CODES COULD BE INVOKED AFTER THIS LINE
+    mission1();
+
+
+
+
+    /*
     drone.takeoff(10);
     ros::Duration(20.0).sleep();
     ROS_INFO("Goin");
@@ -300,10 +635,12 @@ int main(int argc, char **argv){
     ros::Duration(20.0).sleep();
     ROS_INFO("Landin");
     drone.land();
-
+    */
+    ros::Rate newRate(0.2);
     while(ros::ok()){
 
         ros::spinOnce();
-        rate.sleep();
+        newRate.sleep();
     }
+    
 }
