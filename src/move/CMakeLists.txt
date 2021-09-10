@@ -14,6 +14,7 @@ add_service_files(
     Position.srv
     Camera.srv
     Mesafe.srv
+    Euler.srv
 )
 
 # add_message_files(
@@ -49,7 +50,11 @@ target_link_libraries(commander_plane ${catkin_LIBRARIES})
 target_link_libraries(handler_plane ${catkin_LIBRARIES})
 add_library(rosapi_drone src/handler.cpp)
 add_library(rosapi_plane src/handler_plane.cpp)
-target_link_libraries(rosapi_drone ${catkin_LIBRARIES})
+if (${ARCHITECTURE} MATCHES "arm")
+  target_link_libraries(rosapi_drone ${catkin_LIBRARIES} -lwiringPi)
+else()
+  target_link_libraries(rosapi_drone ${catkin_LIBRARIES})
+endif()
 target_link_libraries(rosapi_plane ${catkin_LIBRARIES})
 
 install(

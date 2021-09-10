@@ -8,6 +8,7 @@
 #include <move/Camera.h>
 #include <move/ArmDisarmCommand.h>
 #include <move/TkoffLandCommand.h>
+#include <move/Mesafe.h>
 
 #ifdef __arm__
 #include <wiringPi.h>
@@ -69,6 +70,7 @@ class Drone{
         bool disarm(); //Absolutely should add this function
         bool pumpWrite(int state);
         bool openCapsule();
+        bool wherePool(double& posx, double& posy, double& posx2, double& posy2);
 
     private:
         battery last_battery_status; // Stores the last known battery status, will be returned if there is a problem in service call. 

@@ -15,6 +15,7 @@
 #include <move/PositionCommand.h>
 #include <move/Battery.h>
 #include <move/Position.h>
+#include <move/Euler.h>
 #include <move/Camera.h>
 #include <move/ArmDisarmCommand.h>
 #include <move/TkoffLandCommand.h>
@@ -32,16 +33,34 @@
 #define TRY(__function__) for(int i = 0; (!__function__) && (i < 5) ;i++) {ros::Duration(1.0).sleep(); ROS_INFO("Trying Again");}
 
 #define GCS_MODE "GUIDED" // "OFFBOARD" for PX4 | "GUIDED" for ARDUPILOT
-#define OFFSET_ANGLE yaw_angle // yaw_angle for auto heading angle offset set at arming // in radians
+#define OFFSET_ANGLE eang.yaw // yaw_angle for auto heading angle offset set at arming // in radians
 
-double yaw_angle;
+struct EulerAngles {
+    double pitch, roll, yaw;
+};
 
-double QuaternionToYaw(geometry_msgs::Quaternion& q) {
+EulerAngles eang;
+
+EulerAngles QuaternionToEuler(geometry_msgs::Quaternion& q) {
+    EulerAngles res;
+
+    // roll (x-axis rotation)
+    double sinr_cosp = 2 * (q.w * q.x + q.y * q.z);
+    double cosr_cosp = 1 - 2 * (q.x * q.x + q.y * q.y);
+    res.roll = std::atan2(sinr_cosp, cosr_cosp);
+
+    // pitch (y-axis rotation)
+    double sinp = 2 * (q.w * q.y - q.z * q.x);
+    if (std::abs(sinp) >= 1)
+        res.pitch = std::copysign(M_PI / 2, sinp); // use 90 degrees if out of range
+    else
+        res.pitch = std::asin(sinp);
+
     // yaw (z-axis rotation)
     double siny_cosp = 2 * (q.w * q.z + q.x * q.y);
     double cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
-    double yaw = std::atan2(siny_cosp, cosy_cosp);
-    return yaw;
+    res.yaw = std::atan2(siny_cosp, cosy_cosp);
+    return res;
 }
 
 // Function for converting radian to degree
@@ -180,9 +199,10 @@ bool service_command_arm_disarm(move::ArmDisarmCommand::Request &req, move::ArmD
     if (arm_command.call(srv))
     {
         if(srv.response.success){
-            yaw_angle = QuaternionToYaw(pose.pose.orientation);
-            ROS_INFO("YAW ANGLE: %.2f", Convert(yaw_angle));
-
+            if(req.cmd){
+                eang = QuaternionToEuler(pose.pose.orientation);
+                ROS_INFO("YAW ANGLE: %.2f", Convert(eang.yaw));
+            }
             ROS_INFO("Vehicle %sarmed!", req.cmd ? "" : "dis");
             return true;
         }else{
@@ -212,6 +232,7 @@ bool service_command_tkoff_land(move::TkoffLandCommand::Request &req, move::Tkof
     mavros_msgs::CommandTOL srv;
     if(req.cmd){
         srv.request.altitude = req.altitude;
+        srv.request.yaw = eang.yaw;
         if (tkoff_command.call(srv))
         {
             if(srv.response.success){
@@ -306,7 +327,7 @@ int main(int argc, char **argv){
 
     // Service Clients
 
-    // Changes arming status
+    // Changes arming statu
     arm_command = nh.serviceClient<mavros_msgs::CommandBool>
             ("mavros/cmd/arming");
     
@@ -370,8 +391,8 @@ int main(int argc, char **argv){
     }
     pose_command = pose;// Reset to the current pose
 
-    yaw_angle = QuaternionToYaw(pose.pose.orientation);
-    ROS_INFO("YAW ANGLE: %.2f", Convert(yaw_angle));
+    eang = QuaternionToEuler(pose.pose.orientation);
+    ROS_INFO("YAW ANGLE: %.2f", Convert(eang.yaw));
 
     //send a few setpoints before starting
     for(int i = 100; ros::ok() && i > 0; --i){ // The number of loops may be decreased probably.

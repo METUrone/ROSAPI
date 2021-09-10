@@ -259,7 +259,27 @@ bool Drone::openCapsule(){
     digitalWrite(MOTOR_PIN, LOW);
     #endif
 }
-    //drone.moveRelative({0,0,10,false});
+
+bool Drone::wherePool(double& _posx, double& _posy, double& _posx2, double& _posy2){
+    ros::ServiceClient get_pool = nh.serviceClient<move::Mesafe>("mesafe");
+
+    move::Mesafe srv;
+    if(get_pool.call(srv)){
+        if((srv.response.posx > 9e4) || (srv.response.posy > 9e4) || (srv.response.posx2 > 9e4) || (srv.response.posy2 > 9e4)){
+            ROS_INFO("No Object Detected");
+        }else{
+            ROS_INFO("Object detected at x:%.2f   y:%.2f    x2:%.2f    y2:%.2f",srv.response.posx,srv.response.posy,srv.response.posx2,srv.response.posy2);
+            _posx = srv.response.posx;
+            _posy = srv.response.posy;
+            _posx2 = srv.response.posx2;
+            _posy2 = srv.response.posy2;
+            return true;
+        }
+    }else{
+        ROS_WARN("Couldn't call cv_ws");
+    }
+    return false;
+}
 
 int main(int argc, char **argv){
     ros::init(argc, argv, "handler");

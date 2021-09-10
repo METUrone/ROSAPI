@@ -5,3 +5,5 @@ float64 yaw
 ---
 float64 posx
 float64 posy
+float64 posx2
+float64 posy2
